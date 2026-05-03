@@ -261,7 +261,7 @@ function classifyJunction(angle, normOut) {
 // ─── Tulip SVG — Dakar style ──────────────────────────────────────────────────
 function drawTulip(bearingIn, bearingOut, angle, junctionHint) {
   const S=120, cx=S/2, cy=S/2;
-  const roadLen=44, roadW=7, routeW=5.5, arrowSz=12, symR=16;
+  const roadLen=44, roadW=7, routeW=5.5, arrowSz=24, symR=16;
   const ink='#1a1a18', grey='#888880', red='#c8352a';
   const normOut=(180-bearingOut+bearingIn+360)%360;
   const isRoundabout=junctionHint==='roundabout';
