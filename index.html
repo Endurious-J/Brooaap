@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RoadBook — GPX Tulip Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap');
+  :root { --ink:#1a1a18; --paper:#f5f0e8; --accent:#c8352a; --muted:#7a7568; --border:#ccc5b0; --card:#faf7f2; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Barlow',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh;
+    background-image:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(0,0,0,0.04) 28px),
+      repeating-linear-gradient(90deg,transparent,transparent 27px,rgba(0,0,0,0.02) 28px); }
+  header { background:var(--ink); color:var(--paper); padding:16px 32px; display:flex; align-items:baseline; gap:16px; border-bottom:4px solid var(--accent); }
+  header h1 { font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
+  header span { font-size:13px; color:#a09880; letter-spacing:0.1em; text-transform:uppercase; }
+  .app-container { max-width:960px; margin:0 auto; padding:24px 16px; }
+  .drop-zone { border:2px dashed var(--border); border-radius:4px; padding:48px 32px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--card); position:relative; }
+  .drop-zone:hover,.drop-zone.drag-over { border-color:var(--accent); background:#fff8f0; }
+  .drop-zone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; }
+  .drop-icon { font-size:48px; margin-bottom:12px; display:block; color:var(--accent); }
+  .drop-zone h2 { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink); margin-bottom:6px; }
+  .drop-zone p { font-size:14px; color:var(--muted); }
+  .controls { display:none; background:var(--card); border:1px solid var(--border); border-radius:4px; padding:20px 24px; margin-top:16px; gap:0; flex-direction:column; }
+  .controls.visible { display:flex; }
+  .controls-row { display:flex; flex-wrap:wrap; gap:24px; align-items:center; }
+  .controls-row+.controls-row { margin-top:14px; padding-top:14px; border-top:1px solid var(--border); }
+  .controls-section-label { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; color:var(--accent); margin-bottom:10px; }
+  .control-group { display:flex; align-items:center; gap:10px; }
+  .control-group label { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.08em; color:var(--muted); white-space:nowrap; }
+  .control-group input[type=range] { width:120px; accent-color:var(--accent); }
+  .control-group .val { font-size:13px; font-weight:500; min-width:36px; color:var(--ink); }
+  .btn { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; padding:10px 22px; border:none; border-radius:2px; cursor:pointer; transition:all 0.15s; }
+  .btn-primary { background:var(--accent); color:#fff; }
+  .btn-primary:hover { background:#a82a20; }
+  .btn-secondary { background:transparent; color:var(--ink); border:1.5px solid var(--border); }
+  .btn-secondary:hover { border-color:var(--ink); }
+  select { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; padding:6px 10px; border:1px solid var(--border); border-radius:2px; background:var(--paper); color:var(--ink); cursor:pointer; }
+  .interp-badge { font-size:11px; color:var(--muted); font-style:italic; }
+  .file-info { display:none; font-size:13px; color:var(--muted); margin-top:8px; padding-left:4px; }
+  .file-info.visible { display:block; }
+  .file-info strong { color:var(--ink); }
+  .roadbook-section { display:none; margin-top:32px; }
+  .roadbook-section.visible { display:block; }
+  .rb-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+  .rb-header h2 { font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; }
+  .rb-stats { font-size:13px; color:var(--muted); display:flex; gap:20px; }
+  .rb-stats span strong { color:var(--ink); }
+  .rb-table { width:100%; border-collapse:collapse; background:var(--card); border:2px solid var(--ink); border-radius:2px; overflow:hidden; table-layout:fixed; }
+  .rb-table thead { background:var(--ink); color:var(--paper); }
+  .rb-table thead th { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.12em; padding:8px 12px; text-align:center; border-right:1px solid rgba(255,255,255,0.15); }
+  .rb-table thead th:last-child { border-right:none; }
+  .rb-table col.col-dist { width:22%; }
+  .rb-table col.col-tulip { width:44%; }
+  .rb-table col.col-notes { width:34%; }
+  .rb-table tbody tr { border-bottom:2px solid var(--ink); }
+  .rb-table tbody tr:last-child { border-bottom:none; }
+  .rb-table tbody tr:nth-child(even) { background:#f0ebe0; }
+  td.col-dist { vertical-align:middle; text-align:center; border-right:2px solid var(--ink); padding:12px 10px; line-height:1.1; }
+  .dist-total { font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:700; color:var(--ink); display:block; letter-spacing:-0.01em; }
+  .dist-total-unit { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:400; color:var(--muted); letter-spacing:0.04em; }
+  .dist-sep { display:block; width:32px; height:1px; background:var(--border); margin:6px auto; }
+  .dist-delta { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:600; color:var(--muted); display:block; }
+  .dist-delta-label { font-size:10px; color:var(--border); text-transform:uppercase; letter-spacing:0.08em; font-family:'Barlow',sans-serif; }
+  td.col-tulip { vertical-align:middle; text-align:center; border-right:2px solid var(--ink); padding:8px 6px; }
+  td.col-notes { vertical-align:top; padding:12px 14px; font-size:13px; color:var(--muted); font-style:italic; min-height:80px; }
+  td.col-notes .turn-name { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:600; color:var(--ink); font-style:normal; text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:4px; }
+  td.col-notes .turn-deg { font-size:12px; color:var(--accent); font-style:normal; font-family:'Barlow Condensed',sans-serif; }
+  /* NOTES WRAP + SIGNAL TRIGGER */
+  .notes-wrap { display:flex; align-items:center; gap:6px; margin-top:8px; }
+  .notes-wrap .notes-input { flex:1; margin-top:0; border:none; border-bottom:1px dashed var(--border); background:transparent; font-size:12px; font-family:'Barlow',sans-serif; color:var(--ink); padding:2px 0; outline:none; font-style:italic; }
+  .notes-wrap .notes-input::placeholder { color:var(--border); }
+  .signal-trigger { width:20px; height:20px; border-radius:50%; flex-shrink:0; background:var(--border); border:none; cursor:pointer; font-size:13px; line-height:20px; text-align:center; padding:0; opacity:0; transition:opacity 0.15s, background 0.15s; }
+  .notes-wrap:hover .signal-trigger { opacity:1; }
+  .signal-trigger:hover { background:var(--accent); color:white; }
+  /* SIGNAL PICKER PANEL */
+  .signal-picker { display:none; position:fixed; z-index:9999; background:var(--card); border:2px solid var(--ink); border-radius:4px; padding:14px; box-shadow:0 8px 32px rgba(0,0,0,0.28); min-width:200px; }
+  .signal-picker.open { display:block; }
+  .signal-picker-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .signal-close { background:none; border:none; cursor:pointer; font-size:16px; line-height:1; color:var(--muted); padding:0 2px; }
+  .signal-close:hover { color:var(--accent); }
+  .signal-picker-title { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.1em; color:var(--muted); }
+  .signal-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; }
+  .signal-btn { width:44px; height:44px; padding:4px; display:flex; align-items:center; justify-content:center; background:transparent; border:1px solid transparent; border-radius:3px; cursor:pointer; transition:background 0.1s; }
+  .signal-btn:hover { background:#f0ebe0; border-color:var(--border); }
+  @media print {
+    body { background:white; background-image:none; }
+    header { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .drop-zone,.controls,.file-info,.rb-header .btn { display:none !important; }
+    .roadbook-section { display:block !important; }
+    .rb-table tbody tr:nth-child(even) { background:#f0ebe0 !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .app-container { padding:0; max-width:100%; }
+    .signal-trigger,.signal-picker { display:none !important; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>RoadBook</h1>
+  <span>GPX Tulip Generator</span>
+</header>
+<div class="app-container">
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".gpx">
+    <span class="drop-icon">⛰</span>
+    <h2>Drop your GPX file here</h2>
+    <p>or click to browse — supports standard GPX 1.1 track files</p>
+  </div>
+  <div class="file-info" id="fileInfo"></div>
+  <div class="controls" id="controls">
+    <div class="controls-section-label">Interpolation</div>
+    <div class="controls-row">
+      <div class="control-group">
+        <label>Method</label>
+        <select id="interpMethod">
+          <option value="none">None (raw GPX)</option>
+          <option value="linear" selected>Linear</option>
+          <option value="spline">Spline (Catmull-Rom)</option>
+        </select>
+      </div>
+      <div class="control-group" id="spacingGroup">
+        <label>Spacing</label>
+        <input type="range" id="spacingSlider" min="5" max="50" value="10" step="5">
+        <span class="val" id="spacingVal">10 m</span>
+      </div>
+      <span class="interp-badge" id="interpBadge"></span>
+    </div>
+    <div class="controls-row">
+      <div class="controls-section-label" style="margin-bottom:0;margin-right:8px">Turn detection</div>
+      <div class="control-group">
+        <label>Min angle</label>
+        <input type="range" id="angleSlider" min="10" max="90" value="30" step="5">
+        <span class="val" id="angleVal">30°</span>
+      </div>
+      <div class="control-group">
+        <label>Min dist</label>
+        <input type="range" id="distSlider" min="20" max="500" value="100" step="10">
+        <span class="val" id="distVal">100 m</span>
+      </div>
+      <button class="btn btn-primary" id="generateBtn">Generate roadbook</button>
+      <button class="btn btn-secondary" id="printBtn">Print / PDF</button>
+    </div>
+  </div>
+  <div class="roadbook-section" id="roadbookSection">
+    <div class="rb-header">
+      <h2>Roadbook</h2>
+      <div class="rb-stats" id="rbStats"></div>
+    </div>
+    <table class="rb-table">
+      <colgroup>
+        <col class="col-dist">
+        <col class="col-tulip">
+        <col class="col-notes">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>KM / Delta</th>
+          <th>Junction</th>
+          <th>Notes &amp; Cautions</th>
+        </tr>
+      </thead>
+      <tbody id="rbBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Shared signal picker panel -->
+<div class="signal-picker" id="signalPicker">
+  <div class="signal-picker-header">
+    <span class="signal-picker-title">Insert signal</span>
+    <button class="signal-close" id="signalClose" title="Close">&#x2715;</button>
+  </div>
+  <div class="signal-grid" id="signalGrid"></div>
+</div>
+
+<script>
+// ─── GPX Parser ───────────────────────────────────────────────────────────────
+function parseGPX(text) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'application/xml');
+  const points = [];
+  doc.querySelectorAll('trkpt').forEach(pt => {
+    const lat = parseFloat(pt.getAttribute('lat'));
+    const lon = parseFloat(pt.getAttribute('lon'));
+    const eleEl = pt.querySelector('ele');
+    const ele = eleEl ? parseFloat(eleEl.textContent) : 0;
+    if (!isNaN(lat) && !isNaN(lon)) points.push({ lat, lon, ele });
+  });
+  return points;
+}
+
+// ─── Geo Math ─────────────────────────────────────────────────────────────────
+function haversine(a, b) {
+  const R = 6371000;
+  const p1 = a.lat*Math.PI/180, p2 = b.lat*Math.PI/180;
+  const dp = (b.lat-a.lat)*Math.PI/180, dl = (b.lon-a.lon)*Math.PI/180;
+  const s = Math.sin(dp/2)**2 + Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;
+  return 2*R*Math.atan2(Math.sqrt(s), Math.sqrt(1-s));
+}
+function bearing(a, b) {
+  const p1=a.lat*Math.PI/180, p2=b.lat*Math.PI/180, dl=(b.lon-a.lon)*Math.PI/180;
+  const y=Math.sin(dl)*Math.cos(p2), x=Math.cos(p1)*Math.sin(p2)-Math.sin(p1)*Math.cos(p2)*Math.cos(dl);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360;
+}
+function angleDiff(a, b) {
+  let d=b-a; while(d>180) d-=360; while(d<-180) d+=360; return d;
+}
+
+// ─── Turn Detection ───────────────────────────────────────────────────────────
+function detectTurns(points, minAngle, minDist) {
+  const WINDOW=5, turns=[];
+  let lastTurnDist=0;
+  const cumDist=[0];
+  for (let i=1; i<points.length; i++) cumDist.push(cumDist[i-1]+haversine(points[i-1],points[i]));
+  const totalDist=cumDist[cumDist.length-1];
+  function avgBearing(idx, forward) {
+    const bs=[];
+    if (forward) { for (let j=idx; j<Math.min(idx+WINDOW,points.length-1); j++) bs.push(bearing(points[j],points[j+1])); }
+    else { for (let j=Math.max(0,idx-WINDOW); j<idx; j++) bs.push(bearing(points[j],points[j+1])); }
+    if (!bs.length) return null;
+    let sc=0, ss=0;
+    bs.forEach(b => { sc+=Math.cos(b*Math.PI/180); ss+=Math.sin(b*Math.PI/180); });
+    return (Math.atan2(ss/bs.length,sc/bs.length)*180/Math.PI+360)%360;
+  }
+  for (let i=WINDOW; i<points.length-WINDOW; i++) {
+    const distFromLast=cumDist[i]-lastTurnDist;
+    if (distFromLast<minDist) continue;
+    const bIn=avgBearing(i,false), bOut=avgBearing(i,true);
+    if (bIn===null||bOut===null) continue;
+    const angle=angleDiff(bIn,bOut);
+    if (Math.abs(angle)>=minAngle) {
+      turns.push({index:i, distFromStart:cumDist[i], distFromLast, bearingIn:bIn, bearingOut:bOut, angle, junctionHint:'normal'});
+      lastTurnDist=cumDist[i];
+    }
+  }
+  for (let i=0; i<turns.length-1; i++) turns[i].distToNext=turns[i+1].distFromStart-turns[i].distFromStart;
+  if (turns.length>0) turns[turns.length-1].distToNext=totalDist-turns[turns.length-1].distFromStart;
+  return {turns, totalDist};
+}
+
+// ─── Turn Classification ──────────────────────────────────────────────────────
+function classifyTurn(angle) {
+  const a=Math.abs(angle), dir=angle>0?'right':'left';
+  if (a<20) return {label:'Slight '+dir};
+  if (a<50) return {label:dir==='right'?'Keep right':'Keep left'};
+  if (a<80) return {label:'Turn '+dir};
+  if (a<110) return {label:'Sharp '+dir};
+  return {label:'U-turn '+dir};
+}
+
+// ─── Junction Classifier ──────────────────────────────────────────────────────
+function classifyJunction(angle, normOut) {
+  const abs=Math.abs(angle);
+  if (abs>=155) return {type:'hairpin', arms:[180,normOut]};
+  if (abs>=70&&abs<=115) return {type:'T', arms:[180,normOut]};
+  if (abs>=40&&abs<70) return {type:'cross', arms:[0,180,normOut,(normOut+180)%360]};
+  if (abs>=20&&abs<40) return {type:'Y', arms:[0,180,normOut]};
+  return {type:'bend', arms:[180,normOut]};
+}
+
+// ─── Tulip SVG — Dakar style ──────────────────────────────────────────────────
+function drawTulip(bearingIn, bearingOut, angle, junctionHint) {
+  const S=120, cx=S/2, cy=S/2;
+  const roadLen=44, roadW=7, routeW=5.5, arrowSz=12, symR=16;
+  const ink='#1a1a18', grey='#888880', red='#c8352a';
+  const normOut=(180-bearingOut+bearingIn+360)%360;
+  const isRoundabout=junctionHint==='roundabout';
+  const {type,arms}=classifyJunction(angle,normOut);
+  function toXY(deg,len) {
+    const rad=(deg-90)*Math.PI/180;
+    return [+(cx+len*Math.cos(rad)).toFixed(2), +(cy+len*Math.sin(rad)).toFixed(2)];
+  }
+  function arrowPoly(deg,tipX,tipY) {
+    const rad=(deg-90)*Math.PI/180, hw=6.5;
+    const wx=Math.cos(rad+Math.PI/2)*hw, wy=Math.sin(rad+Math.PI/2)*hw;
+    const bx=tipX-arrowSz*Math.cos(rad), by=tipY-arrowSz*Math.sin(rad);
+    return (bx+wx).toFixed(1)+','+(by+wy).toFixed(1)+' '+tipX.toFixed(1)+','+tipY.toFixed(1)+' '+(bx-wx).toFixed(1)+','+(by-wy).toFixed(1);
+  }
+  const [ex0,ey0]=toXY(180,roadLen);
+  const [ox1,oy1]=toXY(normOut,roadLen);
+  const [oxs,oys]=toXY(normOut,roadLen-arrowSz);
+  let s='';
+  if (isRoundabout) {
+    const rr=14;
+    [0,90,180,270].forEach(a => { const [ax,ay]=toXY(a,roadLen),[ex,ey]=toXY(a,rr); s+='<line x1="'+ex+'" y1="'+ey+'" x2="'+ax+'" y2="'+ay+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>'; });
+    const [re,re2]=toXY(180,rr),[rx2,ry2]=toXY(normOut,rr);
+    s+='<line x1="'+ex0+'" y1="'+ey0+'" x2="'+re+'" y2="'+re2+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    s+='<line x1="'+ex0+'" y1="'+ey0+'" x2="'+re+'" y2="'+re2+'" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+    s+='<circle cx="'+cx+'" cy="'+cy+'" r="'+rr+'" fill="none" stroke="'+grey+'" stroke-width="'+roadW+'"/>';
+    const arcEnd=normOut, sRad=(180-90)*Math.PI/180, eRad=(arcEnd-90)*Math.PI/180;
+    const sx=+(cx+rr*Math.cos(sRad)).toFixed(2), sy2=+(cy+rr*Math.sin(sRad)).toFixed(2);
+    const ex2=+(cx+rr*Math.cos(eRad)).toFixed(2), ey2=+(cy+rr*Math.sin(eRad)).toFixed(2);
+    const la=((arcEnd-180+360)%360)>180?1:0;
+    s+='<path d="M'+sx+','+sy2+' A'+rr+','+rr+' 0 '+la+' 0 '+ex2+','+ey2+'" fill="none" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+    s+='<line x1="'+rx2+'" y1="'+ry2+'" x2="'+oxs+'" y2="'+oys+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    s+='<line x1="'+rx2+'" y1="'+ry2+'" x2="'+oxs+'" y2="'+oys+'" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+  } else {
+    arms.forEach(a => {
+      if (Math.abs(a-180)<1||Math.abs(a-normOut)<1) return;
+      const [ax,ay]=toXY(a,roadLen);
+      s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+ax+'" y2="'+ay+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    });
+    s+='<line x1="'+ex0+'" y1="'+ey0+'" x2="'+cx+'" y2="'+cy+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+oxs+'" y2="'+oys+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    s+='<line x1="'+ex0+'" y1="'+ey0+'" x2="'+cx+'" y2="'+cy+'" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+    s+='<line x1="'+cx+'" y1="'+cy+'" x2="'+oxs+'" y2="'+oys+'" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+  }
+  s+='<polygon points="'+arrowPoly(normOut,+ox1,+oy1)+'" fill="'+red+'"/>';
+  if (!isRoundabout) {
+    const symLen=symR-4;
+    function symArm(deg) {
+      const rad=(deg-90)*Math.PI/180, tx=+(cx+symLen*Math.cos(rad)).toFixed(1), ty=+(cy+symLen*Math.sin(rad)).toFixed(1);
+      return '<line x1="'+cx+'" y1="'+cy+'" x2="'+tx+'" y2="'+ty+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    }
+    function symArmRed(deg) {
+      const rad=(deg-90)*Math.PI/180, tx=+(cx+symLen*Math.cos(rad)).toFixed(1), ty=+(cy+symLen*Math.sin(rad)).toFixed(1);
+      return '<line x1="'+cx+'" y1="'+cy+'" x2="'+tx+'" y2="'+ty+'" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+    }
+    if (type==='T') { s+=symArm(180); s+=symArm(normOut); }
+    else if (type==='cross') { s+=symArm(0); s+=symArm((normOut+180)%360); s+=symArm(180); s+=symArm(normOut); }
+    else if (type==='Y') { s+=symArm(0); s+=symArm(180); s+=symArm(normOut); }
+    else if (type==='hairpin') {
+      const r2=symLen*0.62, inRad=(180-90)*Math.PI/180, outRad=(normOut-90)*Math.PI/180;
+      const ix=+(cx+r2*Math.cos(inRad)).toFixed(1), iy=+(cy+r2*Math.sin(inRad)).toFixed(1);
+      const ox2=+(cx+r2*Math.cos(outRad)).toFixed(1), oy2=+(cy+r2*Math.sin(outRad)).toFixed(1);
+      s+=symArm(180); s+=symArm(normOut);
+      s+='<path d="M'+ix+','+iy+' A'+r2+','+r2+' 0 1 '+(angle>0?1:0)+' '+ox2+','+oy2+'" fill="none" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
+    } else { s+=symArm(180); s+=symArm(normOut); }
+    s+=symArmRed(180); s+=symArmRed(normOut);
+  }
+  s+='<circle cx="'+ex0+'" cy="'+ey0+'" r="5" fill="'+ink+'" stroke="white" stroke-width="2"/>';
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="'+S+'" height="'+S+'" viewBox="0 0 '+S+' '+S+'">'+s+'</svg>';
+}
+
+// ─── Format distance ──────────────────────────────────────────────────────────
+function fmtDist(m) { return m<1000 ? Math.round(m)+' m' : (m/1000).toFixed(1)+' km'; }
+
+// ─── Interpolation ────────────────────────────────────────────────────────────
+function interpolateLinear(points, stepM) {
+  const out=[points[0]];
+  for (let i=1; i<points.length; i++) {
+    const a=points[i-1], b=points[i], d=haversine(a,b);
+    if (d<0.001) continue;
+    const steps=Math.floor(d/stepM);
+    for (let j=1; j<=steps; j++) { const t=j/(steps+1); out.push({lat:a.lat+t*(b.lat-a.lat), lon:a.lon+t*(b.lon-a.lon), ele:a.ele+t*(b.ele-a.ele)}); }
+    out.push(b);
+  }
+  return out;
+}
+function catmullRomPoint(p0,p1,p2,p3,t) {
+  const t2=t*t, t3=t2*t;
+  return {
+    lat:0.5*((2*p1.lat)+(-p0.lat+p2.lat)*t+(2*p0.lat-5*p1.lat+4*p2.lat-p3.lat)*t2+(-p0.lat+3*p1.lat-3*p2.lat+p3.lat)*t3),
+    lon:0.5*((2*p1.lon)+(-p0.lon+p2.lon)*t+(2*p0.lon-5*p1.lon+4*p2.lon-p3.lon)*t2+(-p0.lon+3*p1.lon-3*p2.lon+p3.lon)*t3),
+    ele:0.5*((2*p1.ele)+(-p0.ele+p2.ele)*t+(2*p0.ele-5*p1.ele+4*p2.ele-p3.ele)*t2+(-p0.ele+3*p1.ele-3*p2.ele+p3.ele)*t3),
+  };
+}
+function interpolateSpline(points, stepM) {
+  if (points.length<2) return points;
+  const out=[], n=points.length;
+  for (let i=0; i<n-1; i++) {
+    const p0=points[Math.max(0,i-1)], p1=points[i], p2=points[i+1], p3=points[Math.min(n-1,i+2)];
+    const segDist=haversine(p1,p2);
+    if (segDist<0.001) continue;
+    const steps=Math.max(1,Math.round(segDist/stepM));
+    for (let j=0; j<steps; j++) out.push(catmullRomPoint(p0,p1,p2,p3,j/steps));
+  }
+  out.push(points[n-1]);
+  return out;
+}
+function applyInterpolation(rawPoints, method, stepM) {
+  if (method==='linear') return interpolateLinear(rawPoints,stepM);
+  if (method==='spline') return interpolateSpline(rawPoints,stepM);
+  return rawPoints;
+}
+
+// ─── Signal Picker ────────────────────────────────────────────────────────────
+const signals = [
+  '⚠️','🚧','⛽','🏁','🔴','🟡',
+  '🟢','⬆️','↗️','➡️','↘️','⬇️',
+];
+
+const signalPicker = document.getElementById('signalPicker');
+const signalGrid   = document.getElementById('signalGrid');
+signalGrid.innerHTML = signals.map(s => '<button class="signal-btn" data-sig="'+s+'">'+s+'</button>').join('');
+
+let activeNotesInput = null;
+
+function openSignalPicker(trigger, input) {
+  activeNotesInput = input;
+  signalPicker.classList.add('open');
+  // Position: centered horizontally on screen, vertically near the trigger row
+  requestAnimationFrame(() => {
+    const rect = trigger.getBoundingClientRect();
+    const pw = signalPicker.offsetWidth;
+    const ph = signalPicker.offsetHeight;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    // Try above the trigger first, fall back to below
+    let top = rect.top - ph - 8;
+    if (top < 8) top = rect.bottom + 8;
+    // Center horizontally near the trigger, clamped to viewport
+    let left = rect.left + rect.width/2 - pw/2;
+    left = Math.max(8, Math.min(left, vw - pw - 8));
+    signalPicker.style.top  = top + 'px';
+    signalPicker.style.left = left + 'px';
+  });
+}
+
+function closeSignalPicker() {
+  signalPicker.classList.remove('open');
+  activeNotesInput = null;
+}
+
+signalGrid.addEventListener('click', e => {
+  const btn = e.target.closest('.signal-btn');
+  if (!btn || !activeNotesInput) return;
+  const idx = parseInt(btn.dataset.idx);
+  const txt = signals[idx].text;
+  const pos = activeNotesInput.selectionStart != null ? activeNotesInput.selectionStart : activeNotesInput.value.length;
+  activeNotesInput.value = activeNotesInput.value.slice(0, pos) + txt + activeNotesInput.value.slice(pos);
+  activeNotesInput.selectionStart = activeNotesInput.selectionEnd = pos + txt.length;
+  activeNotesInput.focus();
+  closeSignalPicker();
+});
+
+document.getElementById('rbBody').addEventListener('click', e => {
+  const trigger = e.target.closest('.signal-trigger');
+  if (!trigger) return;
+  e.stopPropagation();
+  const input = trigger.closest('.notes-wrap').querySelector('.notes-input');
+  if (signalPicker.classList.contains('open') && activeNotesInput === input) {
+    closeSignalPicker();
+  } else {
+    openSignalPicker(trigger, input);
+  }
+});
+
+document.getElementById('signalClose').addEventListener('click', e => {
+  e.stopPropagation();
+  closeSignalPicker();
+});
+document.addEventListener('click', e => {
+  if (!signalPicker.contains(e.target) && !e.target.closest('.signal-trigger')) closeSignalPicker();
+});
+window.addEventListener('scroll', closeSignalPicker, true);
+window.addEventListener('resize', closeSignalPicker);
+
+// ─── State & UI ───────────────────────────────────────────────────────────────
+let gpxPoints = [], gpxName = '';
+const dropZone=document.getElementById('dropZone'), fileInput=document.getElementById('fileInput');
+const fileInfo=document.getElementById('fileInfo'), controls=document.getElementById('controls');
+const angleSlider=document.getElementById('angleSlider'), angleVal=document.getElementById('angleVal');
+const distSlider=document.getElementById('distSlider'), distVal=document.getElementById('distVal');
+const spacingSlider=document.getElementById('spacingSlider'), spacingVal=document.getElementById('spacingVal');
+const spacingGroup=document.getElementById('spacingGroup'), interpMethod=document.getElementById('interpMethod');
+const interpBadge=document.getElementById('interpBadge'), generateBtn=document.getElementById('generateBtn');
+const printBtn=document.getElementById('printBtn'), roadbookSection=document.getElementById('roadbookSection');
+const rbBody=document.getElementById('rbBody'), rbStats=document.getElementById('rbStats');
+
+angleSlider.addEventListener('input', () => { angleVal.textContent = angleSlider.value+'°'; });
+distSlider.addEventListener('input', () => { distVal.textContent = distSlider.value+' m'; });
+spacingSlider.addEventListener('input', () => { spacingVal.textContent = spacingSlider.value+' m'; });
+interpMethod.addEventListener('change', () => {
+  const isNone = interpMethod.value === 'none';
+  spacingGroup.style.opacity = isNone ? '0.35' : '1';
+  spacingGroup.style.pointerEvents = isNone ? 'none' : '';
+});
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('drag-over'); const f=e.dataTransfer.files[0]; if(f) loadFile(f); });
+fileInput.addEventListener('change', () => { if(fileInput.files[0]) loadFile(fileInput.files[0]); });
+generateBtn.addEventListener('click', generate);
+printBtn.addEventListener('click', () => window.print());
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const pts = parseGPX(e.target.result);
+    if (pts.length < 2) { fileInfo.innerHTML='<span style="color:var(--accent)">No track points found.</span>'; fileInfo.classList.add('visible'); return; }
+    gpxPoints = pts; gpxName = file.name.replace('.gpx','');
+    let totalM=0; for(let i=1;i<pts.length;i++) totalM+=haversine(pts[i-1],pts[i]);
+    fileInfo.innerHTML='Loaded <strong>'+file.name+'</strong> — <strong>'+pts.length.toLocaleString()+'</strong> track points · <strong>'+fmtDist(totalM)+'</strong> total';
+    fileInfo.classList.add('visible'); controls.classList.add('visible');
+  };
+  reader.readAsText(file);
+}
+
+function generate() {
+  if (!gpxPoints.length) return;
+  const method=interpMethod.value, stepM=parseInt(spacingSlider.value);
+  const minAngle=parseInt(angleSlider.value), minDist=parseInt(distSlider.value);
+  const working=applyInterpolation(gpxPoints,method,stepM);
+  interpBadge.textContent = method!=='none' ? gpxPoints.length.toLocaleString()+' → '+working.length.toLocaleString()+' pts' : '';
+  const {turns,totalDist}=detectTurns(working,minAngle,minDist);
+  const mLabel={none:'raw GPX',linear:'linear',spline:'spline'}[method];
+  rbStats.innerHTML='<span><strong>'+turns.length+'</strong> turns detected</span><span>Total: <strong>'+fmtDist(totalDist)+'</strong></span><span style="font-style:italic">'+mLabel+(method!=='none'?' · '+stepM+' m':'')+'</span>';
+  rbBody.innerHTML='';
+  if (turns.length===0) {
+    rbBody.innerHTML='<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--muted);font-style:italic;">No turns detected — try lowering the minimum angle.</td></tr>';
+  } else {
+    turns.forEach(t => {
+      const cls=classifyTurn(t.angle);
+      const tulip=drawTulip(t.bearingIn,t.bearingOut,t.angle,t.junctionHint||'normal');
+      const totalKm=(t.distFromStart/1000).toFixed(2);
+      const deltaM=Math.round(t.distFromLast);
+      const deltaStr=deltaM>=1000?(deltaM/1000).toFixed(1)+' km':deltaM+' m';
+      const row=document.createElement('tr');
+      row.innerHTML=
+        '<td class="col-dist"><span class="dist-total">'+totalKm+'</span><span class="dist-total-unit">km</span><span class="dist-sep"></span><span class="dist-delta">+ '+deltaStr+'</span><span class="dist-delta-label">from prev</span></td>'+
+        '<td class="col-tulip">'+tulip+'</td>'+
+        '<td class="col-notes">'+
+          '<span class="turn-name">'+cls.label+'</span>'+
+          '<span class="turn-deg">'+(t.angle>0?'+':'')+Math.round(t.angle)+'°</span>'+
+          '<div class="notes-wrap">'+
+            '<input class="notes-input" type="text" placeholder="Add note or caution…">'+
+            '<button class="signal-trigger" title="Insert signal">⊕</button>'+
+          '</div>'+
+        '</td>';
+      rbBody.appendChild(row);
+    });
+  }
+  roadbookSection.classList.add('visible');
+  roadbookSection.scrollIntoView({behavior:'smooth',block:'start'});
+}
+</script>
+</body>
+</html>
