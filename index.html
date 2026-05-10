@@ -81,13 +81,19 @@
   .spk-btn { background:none; border:1px solid transparent; border-radius:3px; padding:3px; cursor:pointer; }
   .spk-btn:hover { background:#f0ebe0; border-color:var(--border); }
   @media print {
-    body { background:white; background-image:none; }
-    header { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-    .drop-zone,.controls,.file-info,.rb-header .btn { display:none !important; }
-    .roadbook-section { display:block !important; }
-    .rb-table tbody tr:nth-child(even) { background:#f0ebe0 !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
-    .app-container { padding:0; max-width:100%; }
+    * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    body { background:white !important; background-image:none !important; margin:0; }
+    header { display:none !important; }
+    .drop-zone,.controls,.file-info,.rb-header { display:none !important; }
+    .roadbook-section { display:block !important; margin:0; }
+    .app-container { padding:0; max-width:100%; margin:0; }
+    .rb-table { border:2px solid #1a1a18 !important; width:100%; }
+    .rb-table tbody tr:nth-child(even) { background:#f0ebe0 !important; }
+    .dist-delta-box { background:white !important; }
+    .rb-table tbody tr:nth-child(even) .dist-delta-box { background:#f0ebe0 !important; }
     .spk-trigger,.spk-panel { display:none !important; }
+    svg { overflow:visible; }
+    tr { page-break-inside:avoid; }
   }
 </style>
 </head>
@@ -421,8 +427,79 @@ dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over')
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 generateBtn.addEventListener('click',generate);
-printBtn.addEventListener('click',()=>window.print());
+printBtn.addEventListener('click', () => {
+  // Sync typed notes into HTML so the preview captures them
+  document.querySelectorAll('.notes-input').forEach(inp => {
+    inp.setAttribute('value', inp.value);
+  });
 
+  const today = new Date();
+  const dd = String(today.getDate()).padStart(2,'0');
+  const mm = String(today.getMonth()+1).padStart(2,'0');
+  const yyyy = today.getFullYear();
+  const dateStr = dd + '-' + mm + '-' + yyyy;
+
+  // Build a full self-contained preview page
+  const css = `
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Barlow:wght@400;500&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0;print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+    body{font-family:'Barlow',sans-serif;background:#f5f0e8;padding:16px;}
+    h2{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px;color:#1a1a18;}
+    .save-btn{display:inline-block;margin-bottom:16px;margin-right:8px;font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;padding:10px 22px;background:#c8352a;color:white;border:none;border-radius:2px;cursor:pointer;}
+    .save-btn:hover{background:#a82a20;}
+    @media print{.no-print{display:none!important;}body{background:white;padding:0;}}
+    @page{size:A4 landscape;margin:10mm;}
+    table{width:100%;border-collapse:collapse;border:2px solid #1a1a18;table-layout:fixed;}
+    col:nth-child(1){width:22%;}col:nth-child(2){width:44%;}col:nth-child(3){width:34%;}
+    thead{background:#1a1a18;color:#f5f0e8;}
+    thead th{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;padding:8px 12px;text-align:center;border-right:1px solid rgba(255,255,255,0.15);}
+    thead th:last-child{border-right:none;}
+    tbody tr{border-bottom:2px solid #1a1a18;page-break-inside:avoid;}
+    tbody tr:nth-child(even){background:#f0ebe0;}
+    td.col-dist{border-right:2px solid #1a1a18;padding:0;position:relative;}
+    td.col-tulip{text-align:center;border-right:2px solid #1a1a18;padding:6px;position:relative;vertical-align:top;}
+    td.col-notes{vertical-align:top;padding:10px 12px;}
+    .dist-total-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px 32px 8px;min-height:90px;}
+    .dist-total{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;line-height:1;color:#1a1a18;}
+    .dist-total-unit{font-family:'Barlow Condensed',sans-serif;font-size:12px;color:#7a7568;margin-top:2px;}
+    .dist-delta-box{position:absolute;bottom:0;left:0;border-top:1.5px solid #1a1a18;border-right:1.5px solid #1a1a18;border-left:1.5px solid #1a1a18;padding:5px 10px;}
+    .dist-delta{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;display:block;color:#1a1a18;}
+    .sym-strip{position:absolute;top:4px;right:4px;display:flex;flex-wrap:wrap;gap:2px;justify-content:flex-end;max-width:80px;}
+    .sym-strip img{width:30px;height:30px;display:block;}
+    .turn-name{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;text-transform:uppercase;display:block;margin-bottom:2px;color:#1a1a18;}
+    .turn-deg{font-family:'Barlow Condensed',sans-serif;font-size:12px;display:block;margin-bottom:6px;color:#c8352a;}
+    .notes-input{width:100%;border:none;border-bottom:1px dashed #ccc;font-size:12px;font-style:italic;background:transparent;font-family:'Barlow',sans-serif;}
+    .spk-trigger,.spk-panel,.dist-delta-label{display:none!important;}
+    .disclaimer-wrap{margin-bottom:14px;}
+    .disclaimer{width:100%;font-family:'Barlow',sans-serif;font-size:12px;color:#1a1a18;background:#fffbe6;border:1.5px solid #c8352a;border-radius:3px;padding:10px 12px;resize:vertical;line-height:1.5;box-sizing:border-box;}
+    @media print{.disclaimer{border:1.5px solid #c8352a!important;background:#fffbe6!important;print-color-adjust:exact;-webkit-print-color-adjust:exact;}}
+  `;
+
+  const rbTable = document.getElementById('rbBody');
+  const tbody = rbTable ? rbTable.innerHTML : '';
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Roadbook ' + dateStr + '</title><style>' + css + '</style></head><body>' +
+    '<div class="no-print"><h2>Roadbook ' + dateStr + '</h2>' +
+    '<button class="save-btn" onclick="window.print()">&#8595; Save as PDF</button>' +
+    '<p style="font-family:sans-serif;font-size:13px;color:#7a7568;margin-top:8px;">In the print dialog: set <strong>Destination</strong> to <strong>Save as PDF</strong>, then click Save.</p>' +
+    '</div>' +
+    '<div class="disclaimer-wrap">' +
+    '<textarea class="disclaimer" rows="4">DISCLAIMER: This roadbook is generated automatically from a GPX track and may contain errors or inaccuracies. Route conditions, distances and directions should be verified independently. Use of this roadbook is entirely at your own risk. This is a working document — always cross-reference with local knowledge and official route information.</textarea>' +
+    '</div>' +
+    '<table><colgroup><col><col><col></colgroup>' +
+    '<thead><tr><th>KM / Delta</th><th>Junction</th><th>Notes &amp; Cautions</th></tr></thead>' +
+    '<tbody>' + tbody + '</tbody></table>' +
+    '</body></html>';
+
+  const newWin = window.open('', '_blank', 'width=1000,height=800');
+  if (!newWin) {
+    alert('Please allow popups for this page to open the PDF preview.');
+    return;
+  }
+  newWin.document.open();
+  newWin.document.write(html);
+  newWin.document.close();
+});
 function loadFile(file) {
   const reader=new FileReader();
   reader.onload=e=>{
