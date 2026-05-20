@@ -53,15 +53,15 @@
   .rb-table col.col-dist { width:22%; }
   .rb-table col.col-tulip { width:44%; }
   .rb-table col.col-notes { width:34%; }
-  .rb-table tbody tr { border-bottom:2px solid var(--ink); }
+  .rb-table tbody tr { border-bottom:2px solid var(--ink); height:120px; }
   .rb-table tbody tr:last-child { border-bottom:none; }
   .rb-table tbody tr:nth-child(even) { background:#f0ebe0; }
   td.col-dist { border-right:2px solid var(--ink); padding:0; position:relative; }
   .dist-total-wrap { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:12px 8px 32px 8px; min-height:90px; }
-  .dist-total { font-family:'Barlow Condensed',sans-serif; font-size:30px; font-weight:700; color:var(--ink); line-height:1; }
-  .dist-total-unit { font-family:'Barlow Condensed',sans-serif; font-size:12px; color:var(--muted); margin-top:2px; }
+  .dist-total { font-family:'Barlow Condensed',sans-serif; font-size:38px; font-weight:700; color:var(--ink); line-height:1; }
+  .dist-total-unit { font-family:'Barlow Condensed',sans-serif; font-size:14px; color:var(--muted); margin-top:2px; }
   .dist-delta-box { position:absolute; bottom:0; left:0; border-top:1.5px solid var(--ink); border-right:1.5px solid var(--ink); border-left:1.5px solid var(--ink); padding:5px 10px; line-height:1.2; }
-  .dist-delta { font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:700; color:var(--ink); white-space:nowrap; display:block; }
+  .dist-delta { font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; color:var(--ink); white-space:nowrap; display:block; }
   td.col-tulip { vertical-align:top; text-align:center; border-right:2px solid var(--ink); padding:6px; position:relative; }
   /* symbol strip — top-right of tulip cell */
   .sym-strip { position:absolute; top:4px; right:4px; display:flex; flex-wrap:wrap; gap:2px; justify-content:flex-end; max-width:80px; z-index:1; }
@@ -81,8 +81,20 @@
   .spk-btn { background:none; border:1px solid transparent; border-radius:3px; padding:3px; cursor:pointer; }
   .spk-btn:hover { background:#f0ebe0; border-color:var(--border); }
   /* SURFACE SYMBOL — bottom-right of tulip cell */
-  .surf-strip { position:absolute; bottom:4px; right:4px; display:flex; align-items:center; justify-content:center; width:28px; height:28px; }
+  .surf-strip { position:absolute; bottom:4px; right:4px; display:flex; align-items:center; justify-content:center; gap:2px; }
   .surf-strip svg { display:block; }
+  /* HELP TOOLTIP */
+  .help-btn { background:none; border:1.5px solid var(--border); border-radius:50%; width:18px; height:18px; font-size:11px; font-weight:700; color:var(--muted); cursor:pointer; line-height:16px; text-align:center; padding:0; flex-shrink:0; font-family:'Barlow Condensed',sans-serif; }
+  .help-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .help-panel { display:none; position:fixed; z-index:9999; background:var(--card); border:2px solid var(--ink); border-radius:4px; padding:16px 18px; box-shadow:0 6px 24px rgba(0,0,0,0.18); width:380px; max-height:80vh; display:none; flex-direction:column; }
+  .help-panel.open { display:flex; }
+  .help-scroll { overflow-y:auto; flex:1; padding-right:4px; }
+  .help-panel h4 { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
+  .help-close { background:none; border:none; cursor:pointer; font-size:15px; color:var(--muted); padding:0; line-height:1; }
+  .help-close:hover { color:var(--accent); }
+  .help-panel dl { font-size:12px; line-height:1.5; }
+  .help-panel dt { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--accent); margin-top:8px; text-transform:uppercase; letter-spacing:0.04em; }
+  .help-panel dd { color:var(--muted); margin-left:0; margin-top:2px; }
   @media print { .surf-strip svg { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
   @media print {
     * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
@@ -143,6 +155,8 @@
       </div>
       <button class="btn btn-primary" id="generateBtn">Generate roadbook</button>
       <button class="btn btn-secondary" id="surfaceBtn" style="display:none">Fetch surfaces</button>
+      <button class="btn btn-secondary" id="elevationBtn" style="display:none">Fetch elevation</button>
+      <button class="btn btn-secondary" id="howToBtn">How to use</button>
       <button class="btn btn-secondary" id="printBtn">Print / PDF</button>
     </div>
   </div>
@@ -158,6 +172,61 @@
     </table>
   </div>
 </div>
+
+<!-- How To Use panel -->
+<div class="help-panel" id="howToPanel">
+  <h4>How to use <button class="help-close" id="howToClose">&#x2715;</button></h4>
+  <div class="help-scroll">
+    <dl>
+      <dt>&#x2460; Load a GPX file</dt>
+      <dd>Drag and drop your GPX track file onto the drop zone, or click to browse. The app reads the track points and shows the total distance.</dd>
+
+      <dt>&#x2461; Interpolation — Method</dt>
+      <dd><b>None (raw GPX)</b> — uses your file exactly as recorded. Fine if your GPS logs frequently (every few metres).<br>
+      <b>Linear</b> — inserts extra points in straight lines between existing ones for uniform spacing. Good for most tracks.<br>
+      <b>Spline</b> — fits a smooth curve through your points before adding new ones. Best for sparse GPX files or winding roads.</dd>
+
+      <dt>Spacing</dt>
+      <dd>Target distance between points after interpolation. 10 m is a good balance — lower for more precision, higher for faster processing.</dd>
+
+      <dt>&#x2462; Turn detection — Min angle</dt>
+      <dd>Minimum direction change to count as a turn. Lower = more tulips (gentle bends included). Higher = only sharp turns. Start at 30° and adjust to taste.</dd>
+
+      <dt>Turn detection — Min dist</dt>
+      <dd>Minimum distance from the last turn before a new one is detected. Prevents duplicate tulips for the same corner. Raise if turns appear too close together.</dd>
+
+      <dt>&#x2463; Generate roadbook</dt>
+      <dd>Processes the GPX with your settings and builds the tulip table. Each row shows the total KM, the junction diagram, and a notes field.</dd>
+
+      <dt>&#x2464; Fetch surfaces</dt>
+      <dd>Queries OpenStreetMap (needs internet) for the road surface type near each turn. Result appears as a coloured hexagon in the bottom-right of each tulip:<br>
+      &#x25a0; Black = asphalt/paved &nbsp; &#x25a0; Grey = gravel &nbsp; &#x25a0; Brown = dirt/mud<br>
+      &#x25a0; Yellow = sand &nbsp; &#x25a0; Green = grass &nbsp; &#x25a0; White = ice/snow<br>
+      Three hexagons in a triangle = loose surface. A red outer ring means difficult terrain.</dd>
+
+      <dt>&#x2465; Fetch elevation</dt>
+      <dd>Calculates steep slopes from your GPX elevation data (no internet needed). A red diagonal arrow appears next to the hexagon — pointing up-right for climbs, down-right for descents. Only shown when the grade is 6% or steeper.</dd>
+
+      <dt>&#x2466; Add signals (&#x2295; button)</dt>
+      <dd>Click the red &#x2295; button in any notes cell to open the signal picker. Click a symbol to place it in the top-right corner of the tulip. Click a placed symbol to remove it.<br><br>
+      <b>!</b> — Single warning &nbsp; <b>!!</b> — Danger / double warning<br>
+      <b>&#x25cf;</b> — General caution (yellow dot)<br>
+      <b>Bridge</b> — Road goes over a bridge<br>
+      <b>River crossing</b> — Water crossing ahead<br>
+      <b>Railroad</b> — Level crossing ahead<br>
+      <b>Fuel stop</b> — Fuel available<br>
+      <b>Waypoint</b> — Passage control / checkpoint<br>
+      Surface &amp; slope symbols can also be placed manually here if OSM data is missing or outdated.</dd>
+
+      <dt>&#x2467; Notes field</dt>
+      <dd>Free text field per tulip row. Type any caution, instruction or landmark name. Notes are included in the PDF export.</dd>
+
+      <dt>&#x2468; Print / PDF</dt>
+      <dd>Opens a preview window with your roadbook, an editable disclaimer, and a header placeholder. Click "Save as PDF" in the preview, then in the print dialog choose Destination → Save as PDF.</dd>
+    </dl>
+  </div>
+</div>
+
 <script>
 
 // ─── GPX Parser ───────────────────────────────────────────────────────────────
@@ -363,7 +432,16 @@ const SIGNALS = [
   {label:'River crossing', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cGF0aCBkPSJNMyAxMiBROSA4IDE1IDEyIFEyMSAxNiAyNyAxMiBRMzMgOCAzNCAxMiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmE2YmJmIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBhdGggZD0iTTMgMjAgUTkgMTYgMTUgMjAgUTIxIDI0IDI3IDIwIFEzMyAxNiAzNCAyMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMmE2YmJmIiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBvbHlnb24gcG9pbnRzPSIxOCwzIDEzLDEyIDIzLDEyIiBmaWxsPSIjMWExYTE4Ii8+PGxpbmUgeDE9IjE4IiB5MT0iMyIgeDI9IjE4IiB5Mj0iMzMiIHN0cm9rZT0iIzFhMWExOCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg=='},
   {label:'Railroad', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48bGluZSB4MT0iMyIgeTE9IjEzIiB4Mj0iMzMiIHkyPSIxMyIgc3Ryb2tlPSIjMWExYTE4IiBzdHJva2Utd2lkdGg9IjMiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIzIiB5MT0iMjMiIHgyPSIzMyIgeTI9IjIzIiBzdHJva2U9IiMxYTFhMTgiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9IjgiIHkxPSIxMCIgeDI9IjgiIHkyPSIyNiIgc3Ryb2tlPSIjMWExYTE4IiBzdHJva2Utd2lkdGg9IjIuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9IjE2IiB5MT0iMTAiIHgyPSIxNiIgeTI9IjI2IiBzdHJva2U9IiMxYTFhMTgiIHN0cm9rZS13aWR0aD0iMi41IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48bGluZSB4MT0iMjQiIHkxPSIxMCIgeDI9IjI0IiB5Mj0iMjYiIHN0cm9rZT0iIzFhMWExOCIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSI0IiB5MT0iNCIgeDI9IjMyIiB5Mj0iMzIiIHN0cm9rZT0iI2M4MzUyYSIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxsaW5lIHgxPSIzMiIgeTE9IjQiIHgyPSI0IiB5Mj0iMzIiIHN0cm9rZT0iI2M4MzUyYSIgc3Ryb2tlLXdpZHRoPSIyLjUiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg=='},
   {label:'Fuel stop', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cmVjdCB4PSI2IiB5PSIxMCIgd2lkdGg9IjE2IiBoZWlnaHQ9IjIyIiByeD0iMiIgZmlsbD0iIzFhMWExOCIvPjxyZWN0IHg9IjkiIHk9IjEzIiB3aWR0aD0iMTAiIGhlaWdodD0iNiIgcng9IjEiIGZpbGw9IndoaXRlIiBvcGFjaXR5PSIwLjg1Ii8+PHJlY3QgeD0iMjIiIHk9IjE0IiB3aWR0aD0iNyIgaGVpZ2h0PSIyLjUiIHJ4PSIxLjIiIGZpbGw9IiM1NTUiLz48cGF0aCBkPSJNMjIgMTUuMiBRMjkgMTUuMiAyOSAyMiBRMjkgMjcgMjUgMjciIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzU1NSIgc3Ryb2tlLXdpZHRoPSIyLjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjxyZWN0IHg9IjIxIiB5PSIyNS41IiB3aWR0aD0iNSIgaGVpZ2h0PSIyLjUiIHJ4PSIxIiBmaWxsPSIjNTU1Ii8+PHJlY3QgeD0iNCIgeT0iMzAiIHdpZHRoPSIyMCIgaGVpZ2h0PSIzIiByeD0iMSIgZmlsbD0iIzU1NSIvPjwvc3ZnPg=='},
-  {label:'Waypoint', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48Y2lyY2xlIGN4PSIxOCIgY3k9IjE0IiByPSIxMSIgZmlsbD0iIzJhOGEzYSIvPjxwb2x5Z29uIHBvaW50cz0iMTgsMzQgMTIsMjEgMjQsMjEiIGZpbGw9IiMyYThhM2EiLz48dGV4dCB4PSIxOCIgeT0iMTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iOTAwIiBmaWxsPSJ3aGl0ZSI+V1A8L3RleHQ+PC9zdmc+'}
+  {label:'Waypoint', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48Y2lyY2xlIGN4PSIxOCIgY3k9IjE0IiByPSIxMSIgZmlsbD0iIzJhOGEzYSIvPjxwb2x5Z29uIHBvaW50cz0iMTgsMzQgMTIsMjEgMjQsMjEiIGZpbGw9IiMyYThhM2EiLz48dGV4dCB4PSIxOCIgeT0iMTkiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJBcmlhbCxzYW5zLXNlcmlmIiBmb250LXNpemU9IjExIiBmb250LXdlaWdodD0iOTAwIiBmaWxsPSJ3aGl0ZSI+V1A8L3RleHQ+PC9zdmc+'},
+  {label:'Surface: Asphalt', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI5LjMsMTEuNSAyOS4zLDI0LjUgMTguMCwzMS4wIDYuNywyNC41IDYuNywxMS41IDE4LjAsNS4wIiBmaWxsPSIjMWExYTE4Ii8+PC9zdmc+'},
+  {label:'Surface: Gravel', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI0LjEsNC41IDI0LjEsMTEuNSAxOC4wLDE1LjAgMTEuOSwxMS41IDExLjksNC41IDE4LjAsMS4wIiBmaWxsPSIjOGE4YTg4Ii8+PHBvbHlnb24gcG9pbnRzPSIxNi4xLDE4LjUgMTYuMSwyNS41IDEwLjAsMjkuMCAzLjksMjUuNSAzLjksMTguNSAxMC4wLDE1LjAiIGZpbGw9IiM4YThhODgiLz48cG9seWdvbiBwb2ludHM9IjMyLjEsMTguNSAzMi4xLDI1LjUgMjYuMCwyOS4wIDE5LjksMjUuNSAxOS45LDE4LjUgMjYuMCwxNS4wIiBmaWxsPSIjOGE4YTg4Ii8+PC9zdmc+'},
+  {label:'Surface: Dirt', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI0LjEsNC41IDI0LjEsMTEuNSAxOC4wLDE1LjAgMTEuOSwxMS41IDExLjksNC41IDE4LjAsMS4wIiBmaWxsPSIjOEI1RTNDIi8+PHBvbHlnb24gcG9pbnRzPSIxNi4xLDE4LjUgMTYuMSwyNS41IDEwLjAsMjkuMCAzLjksMjUuNSAzLjksMTguNSAxMC4wLDE1LjAiIGZpbGw9IiM4QjVFM0MiLz48cG9seWdvbiBwb2ludHM9IjMyLjEsMTguNSAzMi4xLDI1LjUgMjYuMCwyOS4wIDE5LjksMjUuNSAxOS45LDE4LjUgMjYuMCwxNS4wIiBmaWxsPSIjOEI1RTNDIi8+PC9zdmc+'},
+  {label:'Surface: Sand', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI0LjEsNC41IDI0LjEsMTEuNSAxOC4wLDE1LjAgMTEuOSwxMS41IDExLjksNC41IDE4LjAsMS4wIiBmaWxsPSIjRDRBODQzIi8+PHBvbHlnb24gcG9pbnRzPSIxNi4xLDE4LjUgMTYuMSwyNS41IDEwLjAsMjkuMCAzLjksMjUuNSAzLjksMTguNSAxMC4wLDE1LjAiIGZpbGw9IiNENEE4NDMiLz48cG9seWdvbiBwb2ludHM9IjMyLjEsMTguNSAzMi4xLDI1LjUgMjYuMCwyOS4wIDE5LjksMjUuNSAxOS45LDE4LjUgMjYuMCwxNS4wIiBmaWxsPSIjRDRBODQzIi8+PC9zdmc+'},
+  {label:'Surface: Grass', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI0LjEsNC41IDI0LjEsMTEuNSAxOC4wLDE1LjAgMTEuOSwxMS41IDExLjksNC41IDE4LjAsMS4wIiBmaWxsPSIjM2E4YTNhIi8+PHBvbHlnb24gcG9pbnRzPSIxNi4xLDE4LjUgMTYuMSwyNS41IDEwLjAsMjkuMCAzLjksMjUuNSAzLjksMTguNSAxMC4wLDE1LjAiIGZpbGw9IiMzYThhM2EiLz48cG9seWdvbiBwb2ludHM9IjMyLjEsMTguNSAzMi4xLDI1LjUgMjYuMCwyOS4wIDE5LjksMjUuNSAxOS45LDE4LjUgMjYuMCwxNS4wIiBmaWxsPSIjM2E4YTNhIi8+PC9zdmc+'},
+  {label:'Surface: Rock', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI0LjEsNC41IDI0LjEsMTEuNSAxOC4wLDE1LjAgMTEuOSwxMS41IDExLjksNC41IDE4LjAsMS4wIiBmaWxsPSIjNmE2YTZhIi8+PHBvbHlnb24gcG9pbnRzPSIxNi4xLDE4LjUgMTYuMSwyNS41IDEwLjAsMjkuMCAzLjksMjUuNSAzLjksMTguNSAxMC4wLDE1LjAiIGZpbGw9IiM2YTZhNmEiLz48cG9seWdvbiBwb2ludHM9IjMyLjEsMTguNSAzMi4xLDI1LjUgMjYuMCwyOS4wIDE5LjksMjUuNSAxOS45LDE4LjUgMjYuMCwxNS4wIiBmaWxsPSIjNmE2YTZhIi8+PC9zdmc+'},
+  {label:'Surface: Ice/Snow', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48cG9seWdvbiBwb2ludHM9IjI5LjMsMTEuNSAyOS4zLDI0LjUgMTguMCwzMS4wIDYuNywyNC41IDYuNywxMS41IDE4LjAsNS4wIiBmaWxsPSIjZGRlZWZmIiBzdHJva2U9IiNhYWNjZWUiIHN0cm9rZS13aWR0aD0iMS41Ii8+PC9zdmc+'},
+  {label:'Slope: uphill', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48bGluZSB4MT0iNiIgeTE9IjMwIiB4Mj0iMzAiIHkyPSI2IiBzdHJva2U9IiNjODM1MmEiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBvbHlnb24gcG9pbnRzPSIzMCw2IDE4LDEwIDIyLDE4IiBmaWxsPSIjYzgzNTJhIi8+PC9zdmc+'},
+  {label:'Slope: downhill', uri:'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzNiIgaGVpZ2h0PSIzNiIgdmlld0JveD0iMCAwIDM2IDM2Ij48bGluZSB4MT0iNiIgeTE9IjYiIHgyPSIzMCIgeTI9IjMwIiBzdHJva2U9IiNjODM1MmEiIHN0cm9rZS13aWR0aD0iMyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PHBvbHlnb24gcG9pbnRzPSIzMCwzMCAxNCwyNiAxOCwxOCIgZmlsbD0iI2M4MzUyYSIvPjwvc3ZnPg=='}
 ];
 
 // Build the picker HTML once — reused in each row
@@ -435,6 +513,12 @@ function hexPath() {
   return pts.join(' ');
 }
 
+function hexPoly(cx, cy, r) {
+  const pts = [];
+  for (let i=0;i<6;i++){const a=(i*60-30)*Math.PI/180;pts.push((cx+r*Math.cos(a)).toFixed(1)+','+(cy+r*Math.sin(a)).toFixed(1));}
+  return pts.join(' ');
+}
+
 function drawSurfaceSymbol(cat, difficult) {
   const colors = {
     paved:  '#1a1a18',
@@ -443,22 +527,106 @@ function drawSurfaceSymbol(cat, difficult) {
     sand:   '#D4A843',
     grass:  '#3a8a3a',
     ice:    '#ddeeff',
+    rock:   '#6a6a6a',
   };
   const color = colors[cat];
   if (!color) return '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28"><circle cx="14" cy="14" r="4" fill="none" stroke="#ccc5b0" stroke-width="1.5"/></svg>';
+
+  // Single hexagon types: paved, ice
+  const single = ['paved','ice'];
+  // Triple hexagon types: gravel, dirt, sand, grass, rock
+  const triple = ['gravel','dirt','sand','grass','rock'];
+
   const stroke = cat === 'ice' ? ' stroke="#aaccee" stroke-width="1.5"' : '';
-  // Inner hexagon (same as before, slightly smaller when difficult ring added)
-  const innerPts = [];
-  for (let i=0;i<6;i++){const a=(i*60-30)*Math.PI/180;innerPts.push((14+10*Math.cos(a)).toFixed(1)+','+(14+10*Math.sin(a)).toFixed(1));}
-  // Outer ring hexagon for difficult
-  const outerPts = [];
-  for (let i=0;i<6;i++){const a=(i*60-30)*Math.PI/180;outerPts.push((14+13*Math.cos(a)).toFixed(1)+','+(14+13*Math.sin(a)).toFixed(1));}
+
+  // Difficult outer ring points (only used for single hex)
+  const outerPts = hexPoly(14, 14, 13);
+
   let svg = '<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">';
-  if (difficult) svg += '<polygon points="'+outerPts.join(' ')+'" fill="none" stroke="#c8352a" stroke-width="2"/>';
-  svg += '<polygon points="'+innerPts.join(' ')+'" fill="'+color+'"'+stroke+'/>';
+
+  if (single.includes(cat)) {
+    // One hexagon centred, with optional difficult ring
+    if (difficult) svg += '<polygon points="'+outerPts+'" fill="none" stroke="#c8352a" stroke-width="2"/>';
+    svg += '<polygon points="'+hexPoly(14,14,10)+'" fill="'+color+'"'+stroke+'/>';
+  } else if (triple.includes(cat)) {
+    // Three small hexagons in triangle: one top-centre, two bottom
+    const r = 6;
+    const positions = [[14,6],[8,18],[20,18]];
+    if (difficult) {
+      // Difficult ring: outline around all three as a larger triangle shape
+      svg += '<polygon points="'+hexPoly(14,6,9)+'" fill="none" stroke="#c8352a" stroke-width="1.5"/>';
+      svg += '<polygon points="'+hexPoly(8,18,9)+'" fill="none" stroke="#c8352a" stroke-width="1.5"/>';
+      svg += '<polygon points="'+hexPoly(20,18,9)+'" fill="none" stroke="#c8352a" stroke-width="1.5"/>';
+    }
+    positions.forEach(function(p){
+      svg += '<polygon points="'+hexPoly(p[0],p[1],r)+'" fill="'+color+'"/>';
+    });
+  }
+
   svg += '</svg>';
   return svg;
 }
+function drawElevationArrow(direction) {
+  // direction: 'up' = bottom-left to top-right, 'down' = top-left to bottom-right
+  if (!direction) return '';
+  const col = direction === 'up' ? '#c8352a' : '#2a6bbf';
+  // Arrow line + arrowhead
+  if (direction === 'up') {
+    // bottom-left to top-right
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="28" viewBox="0 0 14 28">' +
+      '<line x1="3" y1="24" x2="11" y2="4" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<polygon points="11,4 5,8 10,10" fill="'+col+'"/>' +
+      '</svg>';
+  } else {
+    // top-left to bottom-right
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="28" viewBox="0 0 14 28">' +
+      '<line x1="3" y1="4" x2="11" y2="24" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<polygon points="11,24 4,18 9,20" fill="'+col+'"/>' +
+      '</svg>';
+  }
+}
+
+function drawElevationArrow(direction) {
+  if (!direction) return '';
+  const col = '#c8352a'; // red for both up and down
+  if (direction === 'up') {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="28" viewBox="0 0 14 28">' +
+      '<line x1="3" y1="24" x2="11" y2="4" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<polygon points="11,4 5,8 10,10" fill="'+col+'"/>' +
+      '</svg>';
+  } else {
+    return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="28" viewBox="0 0 14 28">' +
+      '<line x1="3" y1="4" x2="11" y2="24" stroke="'+col+'" stroke-width="2.5" stroke-linecap="round"/>' +
+      '<polygon points="11,24 4,18 9,20" fill="'+col+'"/>' +
+      '</svg>';
+  }
+}
+
+function fetchElevation() {
+  if (!detectedTurns.length) { alert('Generate a roadbook first.'); return; }
+  const btn = document.getElementById('elevationBtn');
+  const rows = document.querySelectorAll('#rbBody tr');
+  btn.textContent = 'Calculating…'; btn.disabled = true;
+  detectedTurns.forEach((t, i) => {
+    const strip = rows[i] ? rows[i].querySelector('.surf-strip') : null;
+    if (!strip) return;
+    // Get current content (surface symbol) and append/update arrow
+    const existingSvgs = strip.querySelectorAll('svg');
+    // Remove any existing arrow (last svg if it has a line element)
+    if (existingSvgs.length > 1) existingSvgs[existingSvgs.length-1].remove();
+    else if (existingSvgs.length === 1 && existingSvgs[0].querySelector('line')) existingSvgs[0].remove();
+    // Add elevation arrow
+    const arrowHtml = drawElevationArrow(t.elevDir);
+    if (arrowHtml) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = arrowHtml;
+      strip.appendChild(tmp.firstChild);
+    }
+  });
+  btn.textContent = 'Elevation fetched ✓';
+  setTimeout(function(){ btn.textContent = 'Fetch elevation'; btn.disabled = false; }, 2000);
+}
+
 let detectedTurns = [];
 async function fetchSurfaces() {
   const rows = document.querySelectorAll('#rbBody tr');
@@ -517,7 +685,35 @@ dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over')
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 generateBtn.addEventListener('click',generate);
+
+// How To Use panel
+(function() {
+  const howToBtn   = document.getElementById('howToBtn');
+  const howToPanel = document.getElementById('howToPanel');
+  const howToClose = document.getElementById('howToClose');
+  howToBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    howToPanel.classList.toggle('open');
+    if (howToPanel.classList.contains('open')) {
+      requestAnimationFrame(function() {
+        const r  = howToBtn.getBoundingClientRect();
+        const pw = howToPanel.offsetWidth, ph = howToPanel.offsetHeight;
+        let top  = r.bottom + 8;
+        let left = r.right - pw;
+        if (top + ph > window.innerHeight - 8) top = r.top - ph - 8;
+        if (left < 8) left = 8;
+        howToPanel.style.top  = top + 'px';
+        howToPanel.style.left = left + 'px';
+      });
+    }
+  });
+  howToClose.addEventListener('click', function(e) { e.stopPropagation(); howToPanel.classList.remove('open'); });
+  document.addEventListener('click', function(e) {
+    if (!howToPanel.contains(e.target) && e.target !== howToBtn) howToPanel.classList.remove('open');
+  });
+})();
 document.getElementById('surfaceBtn').addEventListener('click', fetchSurfaces);
+document.getElementById('elevationBtn').addEventListener('click', fetchElevation);
 printBtn.addEventListener('click', () => {
   // Sync typed notes into HTML so the preview captures them
   document.querySelectorAll('.notes-input').forEach(inp => {
@@ -546,16 +742,16 @@ printBtn.addEventListener('click', () => {
     thead{background:#1a1a18;color:#f5f0e8;}
     thead th{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;padding:8px 12px;text-align:center;border-right:1px solid rgba(255,255,255,0.15);}
     thead th:last-child{border-right:none;}
-    tbody tr{border-bottom:2px solid #1a1a18;page-break-inside:avoid;}
+    tbody tr{border-bottom:2px solid #1a1a18;page-break-inside:avoid;height:120px;}
     tbody tr:nth-child(even){background:#f0ebe0;}
     td.col-dist{border-right:2px solid #1a1a18;padding:0;position:relative;}
     td.col-tulip{text-align:center;border-right:2px solid #1a1a18;padding:6px;position:relative;vertical-align:top;}
     td.col-notes{vertical-align:top;padding:10px 12px;}
     .dist-total-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px 8px 32px 8px;min-height:90px;}
-    .dist-total{font-family:'Barlow Condensed',sans-serif;font-size:30px;font-weight:700;line-height:1;color:#1a1a18;}
-    .dist-total-unit{font-family:'Barlow Condensed',sans-serif;font-size:12px;color:#7a7568;margin-top:2px;}
+    .dist-total{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:700;line-height:1;color:#1a1a18;}
+    .dist-total-unit{font-family:'Barlow Condensed',sans-serif;font-size:14px;color:#7a7568;margin-top:2px;}
     .dist-delta-box{position:absolute;bottom:0;left:0;border-top:1.5px solid #1a1a18;border-right:1.5px solid #1a1a18;border-left:1.5px solid #1a1a18;padding:5px 10px;}
-    .dist-delta{font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;display:block;color:#1a1a18;}
+    .dist-delta{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:700;display:block;color:#1a1a18;}
     .sym-strip{position:absolute;top:4px;right:4px;display:flex;flex-wrap:wrap;gap:2px;justify-content:flex-end;max-width:80px;}
     .sym-strip img{width:30px;height:30px;display:block;}
     .turn-name{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;text-transform:uppercase;display:block;margin-bottom:2px;color:#1a1a18;}
@@ -654,31 +850,33 @@ function generate() {
   }
   roadbookSection.classList.add('visible');
   roadbookSection.scrollIntoView({behavior:'smooth',block:'start'});
-  // Store turn points + difficulty for surface lookup
+  // Store turn points + difficulty + elevation direction for surface lookup
   detectedTurns = turns.map((t, i) => {
     const pt = working[t.index] || working[working.length-1];
 
-    // Grade: look at elevation change over ~100m approach before the turn
-    const LOOK = 20; // points to look back
+    // Look back over approach to measure elevation change
+    const LOOK = 20;
     const startIdx = Math.max(0, t.index - LOOK);
     const endIdx   = t.index;
-    const eleDiff  = Math.abs(((working[endIdx]&&working[endIdx].ele)||0) - ((working[startIdx]&&working[startIdx].ele)||0));
+    const eleStart = (working[startIdx]&&working[startIdx].ele)||0;
+    const eleEnd   = (working[endIdx]&&working[endIdx].ele)||0;
+    const eleDiff  = eleEnd - eleStart; // signed: positive = uphill, negative = downhill
     const distApproach = Math.max(1, t.distFromLast);
-    const grade = eleDiff / distApproach * 100; // percent
+    const grade = Math.abs(eleDiff) / distApproach * 100;
 
-    // Sharp turn threshold
     const sharpAngle = Math.abs(t.angle) >= 70;
-    // Steep grade threshold
     const steepGrade = grade >= 8;
-    // Short steep: steep grade over a short distance (< 200m)
     const shortSteep = grade >= 6 && distApproach < 200;
+    const difficult  = (steepGrade && sharpAngle) || grade >= 15 || shortSteep;
 
-    // Difficult = steep + sharp, or very steep alone, or short steep
-    const difficult = (steepGrade && sharpAngle) || grade >= 15 || shortSteep;
+    // Elevation arrow: only show when grade is steep enough (>=6%)
+    let elevDir = null;
+    if (grade >= 6) elevDir = eleDiff > 0 ? 'up' : 'down';
 
-    return { pt, difficult };
+    return { pt, difficult, elevDir };
   });
   document.getElementById('surfaceBtn').style.display = 'inline-block';
+  document.getElementById('elevationBtn').style.display = 'inline-block';
 }
 </script>
 </body>
