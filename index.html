@@ -588,17 +588,15 @@ async function fetchSurroundings() {
   const btn = document.getElementById('surroundBtn');
   btn.textContent = 'Fetching…'; btn.disabled = true;
 
-  // Query for surrounding features within 80m of each turn
-  const unions = detectedTurns.map(t => {
+  // One flat union query for all turn points and all feature types
+  const stmts = detectedTurns.map(t => {
     const lat = t.pt.lat.toFixed(6), lon = t.pt.lon.toFixed(6);
-    return '(' +
-      'way(around:10,'+lat+','+lon+')[building];' +
-      'way(around:10,'+lat+','+lon+')[natural~"wood|scrub|rock|cliff|scree|sand|dune|water|valley"];' +
-      'way(around:10,'+lat+','+lon+')[landuse~"forest|scrub|farmland|meadow|grass"];' +
-      'way(around:10,'+lat+','+lon+')[waterway];' +
-    ')';
+    return 'way(around:10,'+lat+','+lon+')[building];' +
+           'way(around:10,'+lat+','+lon+')[natural~"wood|scrub|rock|cliff|scree|sand|dune|water|valley"];' +
+           'way(around:10,'+lat+','+lon+')[landuse~"forest|scrub|farmland|meadow|grass"];' +
+           'way(around:10,'+lat+','+lon+')[waterway];';
   }).join('\n');
-  const query = '[out:json][timeout:30];\n(\n' + unions + '\n);\nout tags center;';
+  const query = '[out:json][timeout:30];(\n' + stmts + '\n);out tags center;';
 
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
