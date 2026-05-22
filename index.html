@@ -817,37 +817,53 @@ async function fetchSurfaces() {
   const rows = document.querySelectorAll('#rbBody tr');
   if (!rows.length || !detectedTurns.length) { alert('Generate a roadbook first.'); return; }
   const btn = document.getElementById('surfaceBtn');
-  btn.textContent = 'Fetching…'; btn.disabled = true;
+  btn.textContent = 'Fetching surfaces…'; btn.disabled = true;
 
-  // Request ways with geometry so we can detect roundabout direction
-  // Two queries: one for surface (nearest road), one specifically for roundabouts
-  const surfUnions = detectedTurns.map(t =>
+  // ── Query 1: surface tags (50m radius per turn) ───────────────────────────
+  const surfStmts = detectedTurns.map(t =>
     'way(around:50,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[highway];'
   ).join('\n');
-  const rabtUnions = detectedTurns.map(t =>
-    'way(around:120,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
+  const surfQuery = '[out:json][timeout:30];(\n'+surfStmts+'\n);out tags geom;';
+
+  // ── Query 2: roundabouts (strict 40m radius — must be ON the roundabout) ──
+  const rabtStmts = detectedTurns.map(t =>
+    'way(around:40,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
   ).join('\n');
-  const query = '[out:json][timeout:30];(\n'+surfUnions+'\n);out tags geom;\n(\n'+rabtUnions+'\n);out tags geom;';
+  const rabtQuery = '[out:json][timeout:30];(\n'+rabtStmts+'\n);out tags geom;';
 
   try {
-    const resp = await fetch('https://overpass-api.de/api/interpreter', {
-      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'data='+encodeURIComponent(query)
-    });
-    if (!resp.ok) throw new Error('HTTP '+resp.status);
-    const data = await resp.json();
+    // Fire both queries separately so results don't mix
+    const [surfResp, rabtResp] = await Promise.all([
+      fetch('https://overpass-api.de/api/interpreter', {
+        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'data='+encodeURIComponent(surfQuery)
+      }),
+      fetch('https://overpass-api.de/api/interpreter', {
+        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+        body:'data='+encodeURIComponent(rabtQuery)
+      })
+    ]);
+    if (!surfResp.ok) throw new Error('Surface HTTP '+surfResp.status);
+    if (!rabtResp.ok) throw new Error('Roundabout HTTP '+rabtResp.status);
 
-    // Separate surface ways from roundabout ways
-    const surfaceWays    = (data.elements||[]).filter(el => !el.tags || el.tags.junction !== 'roundabout');
-    const roundaboutWays = (data.elements||[]).filter(el => el.tags && el.tags.junction === 'roundabout');
+    const surfData = await surfResp.json();
+    const rabtData = await rabtResp.json();
+
+    const surfaceWays    = surfData.elements || [];
+    const roundaboutWays = rabtData.elements || [];
+
+    // Convert degrees lat/lon distance to metres approx (1 deg lat ≈ 111000m)
+    function degDist(a, b) {
+      return Math.hypot((a.lat - b.lat) * 111000, (a.lon - b.lon) * 85000);
+    }
 
     detectedTurns.forEach((t, i) => {
-      // ── Surface: find nearest non-roundabout highway way ──────────────────
+      // ── Surface ───────────────────────────────────────────────────────────
       let bestEl = null, bestDist = Infinity;
       surfaceWays.forEach(el => {
         if (!el.geometry) return;
         el.geometry.forEach(pt => {
-          const d = Math.hypot(pt.lat - t.pt.lat, pt.lon - t.pt.lon);
+          const d = degDist(pt, t.pt);
           if (d < bestDist) { bestDist = d; bestEl = el; }
         });
       });
@@ -855,18 +871,18 @@ async function fetchSurfaces() {
       const strip = rows[i] ? rows[i].querySelector('.surf-strip') : null;
       if (strip) strip.innerHTML = drawSurfaceSymbol(surfaceCategory(surface), t.difficult);
 
-      // ── Roundabout: check if any roundabout way is within 120m ────────────
+      // ── Roundabout — only if a roundabout node is within 40m of THIS turn ─
       let nearestRabt = null, rabtDist = Infinity;
       roundaboutWays.forEach(el => {
         if (!el.geometry) return;
         el.geometry.forEach(pt => {
-          const d = Math.hypot(pt.lat - t.pt.lat, pt.lon - t.pt.lon);
-          if (d < rabtDist) { rabtDist = d; nearestRabt = el; }
+          const d = degDist(pt, t.pt);
+          // Strict threshold: must be within 40m of this specific turn point
+          if (d < rabtDist && d < 40) { rabtDist = d; nearestRabt = el; }
         });
       });
 
       if (nearestRabt) {
-        // Detect direction from node winding order
         let clockwise = true;
         const pts = nearestRabt.geometry;
         if (pts && pts.length >= 3) {
@@ -877,7 +893,6 @@ async function fetchSurfaces() {
           }
           clockwise = area > 0;
         }
-        // Redraw tulip with roundabout symbol
         const storedTurn = window._storedTurns && window._storedTurns[i];
         const tulipCell  = rows[i] ? rows[i].querySelector('.col-tulip') : null;
         if (storedTurn && tulipCell) {
