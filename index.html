@@ -1062,7 +1062,7 @@ function generate() {
   if(turns.length===0){
     rbBody.innerHTML='<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--muted);font-style:italic;">No turns detected — try lowering the minimum angle.</td></tr>';
   } else {
-    turns.forEach(t=>{
+    turns.forEach((t,i)=>{
       const cls=classifyTurn(t.angle);
       const tulip=drawTulip(t.bearingIn,t.bearingOut,t.angle,t.junctionHint||'normal',true);
       const totalKm=(t.distFromStart/1000).toFixed(2);
