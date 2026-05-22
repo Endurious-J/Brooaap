@@ -597,13 +597,8 @@ async function fetchSurroundings() {
       'way(around:10,'+lat+','+lon+')[landuse~"forest|scrub|farmland|meadow|grass"];' +
       'way(around:10,'+lat+','+lon+')[waterway];' +
     ')';
-  }).join('
-');
-  const query = '[out:json][timeout:30];
-(
-' + unions + '
-);
-out tags center;';
+  }).join('\n');
+  const query = '[out:json][timeout:30];\n(\n' + unions + '\n);\nout tags center;';
 
   try {
     const resp = await fetch('https://overpass-api.de/api/interpreter', {
