@@ -11,8 +11,8 @@
   body { font-family:'Barlow',sans-serif; background:var(--paper); color:var(--ink); min-height:100vh;
     background-image:repeating-linear-gradient(0deg,transparent,transparent 27px,rgba(0,0,0,0.04) 28px),
       repeating-linear-gradient(90deg,transparent,transparent 27px,rgba(0,0,0,0.02) 28px); }
-  header { background:var(--ink); color:var(--paper); padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:4px solid var(--accent); position:relative; z-index:1; flex-wrap:wrap; }
-  header h1 { font-family:'Barlow Condensed',sans-serif; font-size:22px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
+  header { background:var(--ink); color:var(--paper); padding:16px 32px; display:flex; align-items:baseline; gap:16px; border-bottom:4px solid var(--accent); }
+  header h1 { font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:700; letter-spacing:0.05em; text-transform:uppercase; }
   header span { font-size:13px; color:#a09880; letter-spacing:0.1em; text-transform:uppercase; }
   .app-container { max-width:960px; margin:0 auto; padding:24px 16px; }
   .drop-zone { border:2px dashed var(--border); border-radius:4px; padding:48px 32px; text-align:center; cursor:pointer; transition:all 0.2s; background:var(--card); position:relative; }
@@ -53,7 +53,7 @@
   .rb-table col.col-dist { width:22%; }
   .rb-table col.col-tulip { width:44%; }
   .rb-table col.col-notes { width:34%; }
-  .rb-table tbody tr { border-bottom:2px solid var(--ink); height:120px; }
+  .rb-table tbody tr { border-bottom:2px solid var(--ink); }
   .rb-table tbody tr:last-child { border-bottom:none; }
   .rb-table tbody tr:nth-child(even) { background:#f0ebe0; }
   td.col-dist { border-right:2px solid var(--ink); padding:0; position:relative; }
@@ -80,25 +80,9 @@
   .spk-panel.open { display:flex; }
   .spk-btn { background:none; border:1px solid transparent; border-radius:3px; padding:3px; cursor:pointer; }
   .spk-btn:hover { background:#f0ebe0; border-color:var(--border); }
-  /* SURROUNDING PICTOGRAMS */
-  .surround-layer { position:absolute; inset:0; pointer-events:none; }
-  .surround-layer svg { position:absolute; }
-
   /* SURFACE SYMBOL — bottom-right of tulip cell */
   .surf-strip { position:absolute; bottom:4px; right:4px; display:flex; align-items:center; justify-content:center; gap:2px; }
   .surf-strip svg { display:block; }
-  /* HELP TOOLTIP */
-  .help-btn { background:none; border:1.5px solid var(--border); border-radius:50%; width:18px; height:18px; font-size:11px; font-weight:700; color:var(--muted); cursor:pointer; line-height:16px; text-align:center; padding:0; flex-shrink:0; font-family:'Barlow Condensed',sans-serif; }
-  .help-btn:hover { border-color:var(--accent); color:var(--accent); }
-  .help-panel { display:none; position:absolute; z-index:9999; background:var(--card); border:2px solid var(--ink); border-radius:4px; padding:16px 18px; box-shadow:0 6px 24px rgba(0,0,0,0.18); width:380px; max-height:80vh; display:none; flex-direction:column; }
-  .help-panel.open { display:flex; }
-  .help-scroll { overflow-y:auto; flex:1; padding-right:4px; }
-  .help-panel h4 { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink); margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; }
-  .help-close { background:none; border:none; cursor:pointer; font-size:15px; color:var(--muted); padding:0; line-height:1; }
-  .help-close:hover { color:var(--accent); }
-  .help-panel dl { font-size:12px; line-height:1.5; }
-  .help-panel dt { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; color:var(--accent); margin-top:8px; text-transform:uppercase; letter-spacing:0.04em; }
-  .help-panel dd { color:var(--muted); margin-left:0; margin-top:2px; }
   @media print { .surf-strip svg { print-color-adjust:exact; -webkit-print-color-adjust:exact; } }
   @media print {
     * { print-color-adjust:exact; -webkit-print-color-adjust:exact; }
@@ -118,7 +102,7 @@
 </style>
 </head>
 <body>
-<header><h1>RoadBook</h1><span>GPX Tulip Generator</span><button class="btn" id="howToBtn" style="margin-left:auto;background:var(--accent);color:white;border:none;font-size:13px;padding:6px 16px;border-radius:2px;">How to use</button></header>
+<header><h1>RoadBook</h1><span>GPX Tulip Generator</span></header>
 <div class="app-container">
   <div class="drop-zone" id="dropZone">
     <input type="file" id="fileInput" accept=".gpx">
@@ -133,7 +117,6 @@
       <div class="control-group">
         <label>Method</label>
         <select id="interpMethod">
-          <option value="map">Detect from map (OSM)</option>
           <option value="none">None (raw GPX)</option>
           <option value="linear" selected>Linear</option>
           <option value="spline">Spline (Catmull-Rom)</option>
@@ -160,7 +143,6 @@
       </div>
       <button class="btn btn-primary" id="generateBtn">Generate roadbook</button>
       <button class="btn btn-secondary" id="surfaceBtn" style="display:none">Fetch surfaces</button>
-      <button class="btn btn-secondary" id="surroundBtn" style="display:none">Fetch surroundings</button>
       <button class="btn btn-secondary" id="elevationBtn" style="display:none">Fetch elevation</button>
       <button class="btn btn-secondary" id="printBtn">Print / PDF</button>
     </div>
@@ -177,61 +159,6 @@
     </table>
   </div>
 </div>
-
-<!-- How To Use panel -->
-<div class="help-panel" id="howToPanel">
-  <h4>How to use <button class="help-close" id="howToClose">&#x2715;</button></h4>
-  <div class="help-scroll">
-    <dl>
-      <dt>&#x2460; Load a GPX file</dt>
-      <dd>Drag and drop your GPX track file onto the drop zone, or click to browse. The app reads the track points and shows the total distance.</dd>
-
-      <dt>&#x2461; Interpolation — Method</dt>
-      <dd><b>None (raw GPX)</b> — uses your file exactly as recorded. Fine if your GPS logs frequently (every few metres).<br>
-      <b>Linear</b> — inserts extra points in straight lines between existing ones for uniform spacing. Good for most tracks.<br>
-      <b>Spline</b> — fits a smooth curve through your points before adding new ones. Best for sparse GPX files or winding roads.</dd>
-
-      <dt>Spacing</dt>
-      <dd>Target distance between points after interpolation. 10 m is a good balance — lower for more precision, higher for faster processing.</dd>
-
-      <dt>&#x2462; Turn detection — Min angle</dt>
-      <dd>Minimum direction change to count as a turn. Lower = more tulips (gentle bends included). Higher = only sharp turns. Start at 30° and adjust to taste.</dd>
-
-      <dt>Turn detection — Min dist</dt>
-      <dd>Minimum distance from the last turn before a new one is detected. Prevents duplicate tulips for the same corner. Raise if turns appear too close together.</dd>
-
-      <dt>&#x2463; Generate roadbook</dt>
-      <dd>Processes the GPX with your settings and builds the tulip table. Each row shows the total KM, the junction diagram, and a notes field.</dd>
-
-      <dt>&#x2464; Fetch surfaces</dt>
-      <dd>Queries OpenStreetMap (needs internet) for the road surface type near each turn. Result appears as a coloured hexagon in the bottom-right of each tulip:<br>
-      &#x25a0; Black = asphalt/paved &nbsp; &#x25a0; Grey = gravel &nbsp; &#x25a0; Brown = dirt/mud<br>
-      &#x25a0; Yellow = sand &nbsp; &#x25a0; Green = grass &nbsp; &#x25a0; White = ice/snow<br>
-      Three hexagons in a triangle = loose surface. A red outer ring means difficult terrain.</dd>
-
-      <dt>&#x2465; Fetch elevation</dt>
-      <dd>Calculates steep slopes from your GPX elevation data (no internet needed). A red diagonal arrow appears next to the hexagon — pointing up-right for climbs, down-right for descents. Only shown when the grade is 6% or steeper.</dd>
-
-      <dt>&#x2466; Add signals (&#x2295; button)</dt>
-      <dd>Click the red &#x2295; button in any notes cell to open the signal picker. Click a symbol to place it in the top-right corner of the tulip. Click a placed symbol to remove it.<br><br>
-      <b>!</b> — Single warning &nbsp; <b>!!</b> — Danger / double warning<br>
-      <b>&#x25cf;</b> — General caution (yellow dot)<br>
-      <b>Bridge</b> — Road goes over a bridge<br>
-      <b>River crossing</b> — Water crossing ahead<br>
-      <b>Railroad</b> — Level crossing ahead<br>
-      <b>Fuel stop</b> — Fuel available<br>
-      <b>Waypoint</b> — Passage control / checkpoint<br>
-      Surface &amp; slope symbols can also be placed manually here if OSM data is missing or outdated.</dd>
-
-      <dt>&#x2467; Notes field</dt>
-      <dd>Free text field per tulip row. Type any caution, instruction or landmark name. Notes are included in the PDF export.</dd>
-
-      <dt>&#x2468; Print / PDF</dt>
-      <dd>Opens a preview window with your roadbook, an editable disclaimer, and a header placeholder. Click "Save as PDF" in the preview, then in the print dialog choose Destination → Save as PDF.</dd>
-    </dl>
-  </div>
-</div>
-
 <script>
 
 // ─── GPX Parser ───────────────────────────────────────────────────────────────
@@ -272,11 +199,11 @@ function angleDiff(a, b) {
 
 // ─── Turn Detection ───────────────────────────────────────────────────────────
 function detectTurns(points, minAngle, minDist) {
-  const WINDOW=5;
+  const WINDOW=5, turns=[];
+  let lastTurnDist=0;
   const cumDist=[0];
   for (let i=1; i<points.length; i++) cumDist.push(cumDist[i-1]+haversine(points[i-1],points[i]));
   const totalDist=cumDist[cumDist.length-1];
-
   function avgBearing(idx, forward) {
     const bs=[];
     if (forward) { for (let j=idx; j<Math.min(idx+WINDOW,points.length-1); j++) bs.push(bearing(points[j],points[j+1])); }
@@ -286,10 +213,6 @@ function detectTurns(points, minAngle, minDist) {
     bs.forEach(b => { sc+=Math.cos(b*Math.PI/180); ss+=Math.sin(b*Math.PI/180); });
     return (Math.atan2(ss/bs.length,sc/bs.length)*180/Math.PI+360)%360;
   }
-
-  // ── Step 1: collect all raw candidates ───────────────────────────────────
-  const raw=[];
-  let lastTurnDist=0;
   for (let i=WINDOW; i<points.length-WINDOW; i++) {
     const distFromLast=cumDist[i]-lastTurnDist;
     if (distFromLast<minDist) continue;
@@ -297,66 +220,10 @@ function detectTurns(points, minAngle, minDist) {
     if (bIn===null||bOut===null) continue;
     const angle=angleDiff(bIn,bOut);
     if (Math.abs(angle)>=minAngle) {
-      raw.push({index:i, distFromStart:cumDist[i], bearingIn:bIn, bearingOut:bOut, angle});
+      turns.push({index:i, distFromStart:cumDist[i], distFromLast, bearingIn:bIn, bearingOut:bOut, angle, junctionHint:'normal'});
       lastTurnDist=cumDist[i];
     }
   }
-
-  // ── Step 2: merge candidates that belong to the same physical turn ─────────
-  // Rules for merging two adjacent candidates A and B:
-  //   1. Same direction (both positive or both negative angle)
-  //   2. Gap between them <= MERGE_DIST (no significant straight in between)
-  //   3. No bearing reversal between them (track doesn't go straight then turn again)
-  const MERGE_DIST = Math.max(minDist, 30); // max gap to still consider same turn
-
-  function sameDirection(a, b) {
-    // Both left (negative) or both right (positive)
-    return (a.angle >= 0) === (b.angle >= 0);
-  }
-
-  function hasStraightBetween(a, b) {
-    // Check if bearing difference between bOut of A and bIn of B is small
-    // i.e. the track goes roughly straight between the two detections
-    const bridgeBearing = angleDiff(a.bearingOut, b.bearingIn);
-    // If the bearing resets to near-straight (< 10°) it's a new turn, not continuation
-    return Math.abs(bridgeBearing) < 10;
-  }
-
-  const merged = [];
-  if (raw.length === 0) {
-    // nothing
-  } else {
-    let cluster = [raw[0]];
-    for (let i = 1; i < raw.length; i++) {
-      const prev = raw[i-1], curr = raw[i];
-      const gap  = curr.distFromStart - prev.distFromStart;
-      const merge = gap <= MERGE_DIST
-                 && sameDirection(prev, curr)
-                 && !hasStraightBetween(prev, curr);
-      if (merge) {
-        cluster.push(curr);
-      } else {
-        merged.push(cluster.reduce((a,b) => Math.abs(a.angle)>=Math.abs(b.angle)?a:b));
-        cluster = [curr];
-      }
-    }
-    merged.push(cluster.reduce((a,b) => Math.abs(a.angle)>=Math.abs(b.angle)?a:b));
-  }
-
-  // ── Step 3: recalculate distFromLast and add junctionHint ─────────────────
-  const turns = merged.map((t, i) => {
-    const prevDist = i===0 ? 0 : merged[i-1].distFromStart;
-    return {
-      index:         t.index,
-      distFromStart: t.distFromStart,
-      distFromLast:  t.distFromStart - prevDist,
-      bearingIn:     t.bearingIn,
-      bearingOut:    t.bearingOut,
-      angle:         t.angle,
-      junctionHint:  'normal',
-    };
-  });
-
   for (let i=0; i<turns.length-1; i++) turns[i].distToNext=turns[i+1].distFromStart-turns[i].distFromStart;
   if (turns.length>0) turns[turns.length-1].distToNext=totalDist-turns[turns.length-1].distFromStart;
   return {turns, totalDist};
@@ -389,7 +256,7 @@ function classifyJunction(angle, normOut) {
 // ─── Tulip SVG
 
 // ─── Tulip SVG — Dakar style ──────────────────────────────────────────────────
-function drawTulip(bearingIn, bearingOut, angle, junctionHint, roundaboutCW) {
+function drawTulip(bearingIn, bearingOut, angle, junctionHint) {
   const S=120, cx=S/2, cy=S/2;
   const roadLen=44, roadW=10, routeW=8, arrowSz=14, symR=16;
   const ink='#1a1a18', grey='#888880', red='#c8352a';
@@ -421,8 +288,7 @@ function drawTulip(bearingIn, bearingOut, angle, junctionHint, roundaboutCW) {
     const sx=+(cx+rr*Math.cos(sRad)).toFixed(2), sy2=+(cy+rr*Math.sin(sRad)).toFixed(2);
     const ex2=+(cx+rr*Math.cos(eRad)).toFixed(2), ey2=+(cy+rr*Math.sin(eRad)).toFixed(2);
     const la=((arcEnd-180+360)%360)>180?1:0;
-    const sweep = (roundaboutCW !== false) ? 0 : 1; // 0=CCW arc = CW driving, 1=CW arc = CCW driving
-    s+='<path d="M'+sx+','+sy2+' A'+rr+','+rr+' 0 '+la+' '+sweep+' '+ex2+','+ey2+'" fill="none" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
+    s+='<path d="M'+sx+','+sy2+' A'+rr+','+rr+' 0 '+la+' 0 '+ex2+','+ey2+'" fill="none" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
     s+='<line x1="'+rx2+'" y1="'+ry2+'" x2="'+oxs+'" y2="'+oys+'" stroke="'+grey+'" stroke-width="'+roadW+'" stroke-linecap="round"/>';
     s+='<line x1="'+rx2+'" y1="'+ry2+'" x2="'+oxs+'" y2="'+oys+'" stroke="'+red+'" stroke-width="'+routeW+'" stroke-linecap="round"/>';
   } else {
@@ -550,374 +416,6 @@ document.addEventListener('click', function(e) {
     document.querySelectorAll('.spk-panel.open').forEach(function(p) { p.classList.remove('open'); });
   }
 });
-
-// ─── Surrounding Pictograms ─────────────────────────────────────────────────
-const SURROUND_PICTOS = {
-  building: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<rect x="2" y="8" width="12" height="7" fill="white" stroke="black" stroke-width="1.2"/>'
-      + '<polygon points="8,1 1,8 15,8" fill="white" stroke="black" stroke-width="1.2" stroke-linejoin="round"/>'
-      + '</svg>';
-  },
-  tree: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<polygon points="8,1 2,10 14,10" fill="white" stroke="black" stroke-width="1.2" stroke-linejoin="round"/>'
-      + '<line x1="8" y1="10" x2="8" y2="15" stroke="black" stroke-width="1.5" stroke-linecap="round"/>'
-      + '</svg>';
-  },
-  bush: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<path d="M2,12 Q2,7 5,7 Q5,4 8,4 Q11,4 11,7 Q14,7 14,12 Z" fill="white" stroke="black" stroke-width="1.2"/>'
-      + '</svg>';
-  },
-  rock: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<polygon points="8,2 14,6 13,13 3,13 2,6" fill="white" stroke="black" stroke-width="1.2" stroke-linejoin="round"/>'
-      + '</svg>';
-  },
-  sand: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<path d="M1,10 Q4,6 8,10 Q12,14 15,10" fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '<path d="M1,13 Q4,9 8,13 Q12,17 15,13" fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '</svg>';
-  },
-  water: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<path d="M1,6 Q4,3 8,6 Q12,9 15,6" fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '<path d="M1,11 Q4,8 8,11 Q12,14 15,11" fill="none" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '</svg>';
-  },
-  field: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<line x1="4" y1="14" x2="4" y2="8" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '<line x1="8" y1="14" x2="8" y2="6" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '<line x1="12" y1="14" x2="12" y2="8" stroke="black" stroke-width="1.2" stroke-linecap="round"/>'
-      + '<path d="M2,8 Q4,5 6,8" fill="none" stroke="black" stroke-width="1.2"/>'
-      + '<path d="M6,6 Q8,3 10,6" fill="none" stroke="black" stroke-width="1.2"/>'
-      + '<path d="M10,8 Q12,5 14,8" fill="none" stroke="black" stroke-width="1.2"/>'
-      + '</svg>';
-  },
-  cliff: function() {
-    return '<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">'
-      + '<polyline points="1,14 5,4 8,9 11,3 15,14" fill="none" stroke="black" stroke-width="1.2" stroke-linejoin="round" stroke-linecap="round"/>'
-      + '</svg>';
-  },
-};
-
-function osmTagToSurround(tags) {
-  if (!tags) return null;
-  if (tags.building) return 'building';
-  if (tags.natural === 'wood' || tags.landuse === 'forest') return 'tree';
-  if (tags.natural === 'scrub' || tags.landuse === 'scrub') return 'bush';
-  if (tags.natural === 'rock' || tags.natural === 'cliff' || tags.natural === 'scree') return 'rock';
-  if (tags.natural === 'sand' || tags.natural === 'dune') return 'sand';
-  if (tags.natural === 'water' || tags.waterway) return 'water';
-  if (tags.landuse === 'farmland' || tags.landuse === 'meadow' || tags.landuse === 'grass') return 'field';
-  if (tags.natural === 'valley') return 'cliff';
-  return null;
-}
-
-// Place picto SVG at a position within the surround-layer div
-// position: 'left', 'right', 'top' relative to road direction
-function placePicto(layer, type, position, slotIndex) {
-  const fn = SURROUND_PICTOS[type];
-  if (!fn) return;
-  const svg = fn();
-  const wrapper = document.createElement('div');
-  wrapper.style.position = 'absolute';
-  wrapper.style.width = '16px';
-  wrapper.style.height = '16px';
-  // Position slots: up to 2 pictos per side
-  const offset = slotIndex * 18;
-  if (position === 'left') {
-    wrapper.style.left = '2px';
-    wrapper.style.top = (20 + offset) + 'px';
-  } else if (position === 'right') {
-    wrapper.style.right = '2px';
-    wrapper.style.top = (20 + offset) + 'px';
-  } else { // top = ahead
-    wrapper.style.top = '2px';
-    wrapper.style.left = (20 + offset) + 'px';
-  }
-  wrapper.innerHTML = svg;
-  layer.appendChild(wrapper);
-}
-
-async function fetchSurroundings() {
-  const rows = document.querySelectorAll('#rbBody tr');
-  if (!rows.length || !detectedTurns.length) { alert('Generate a roadbook first.'); return; }
-  const btn = document.getElementById('surroundBtn');
-  btn.textContent = 'Fetching…'; btn.disabled = true;
-
-  // One flat union query for all turn points and all feature types
-  const stmts = detectedTurns.map(t => {
-    const lat = t.pt.lat.toFixed(6), lon = t.pt.lon.toFixed(6);
-    const r = 'around:10,'+lat+','+lon;
-    return [
-      'way('+r+')[building];',
-      'way('+r+')[natural=wood];',
-      'way('+r+')[natural=scrub];',
-      'way('+r+')[natural=rock];',
-      'way('+r+')[natural=cliff];',
-      'way('+r+')[natural=scree];',
-      'way('+r+')[natural=sand];',
-      'way('+r+')[natural=dune];',
-      'way('+r+')[natural=water];',
-      'way('+r+')[natural=valley];',
-      'way('+r+')[landuse=forest];',
-      'way('+r+')[landuse=farmland];',
-      'way('+r+')[landuse=meadow];',
-      'way('+r+')[landuse=grass];',
-      'way('+r+')[waterway];',
-    ].join('');
-  }).join('\n');
-  const query = '[out:json][timeout:30];(\n' + stmts + '\n);out tags center;';
-
-  try {
-    const resp = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(query)
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-
-    detectedTurns.forEach((t, i) => {
-      const layer = document.getElementById('surround-' + i);
-      if (!layer) return;
-      layer.innerHTML = '';
-
-      // Road bearing: entry direction = bearingIn of stored turn
-      const storedTurn = window._storedTurns && window._storedTurns[i];
-      const roadBearing = storedTurn ? storedTurn.bearingIn : 0;
-
-      // Collect features with their relative bearing
-      const leftFeatures = [], rightFeatures = [], aheadFeatures = [];
-
-      (data.elements || []).forEach(el => {
-        if (!el.center) return;
-        const type = osmTagToSurround(el.tags);
-        if (!type) return;
-
-        // Bearing from turn point to feature
-        const dLat = el.center.lat - t.pt.lat;
-        const dLon = el.center.lon - t.pt.lon;
-        const featBearing = (Math.atan2(dLon, dLat) * 180 / Math.PI + 360) % 360;
-
-        // Relative bearing to road direction
-        let rel = featBearing - roadBearing;
-        while (rel > 180) rel -= 360;
-        while (rel < -180) rel += 360;
-
-        // Classify: left (<-30°), right (>30°), ahead (within ±30°)
-        if (rel < -30) leftFeatures.push(type);
-        else if (rel > 30) rightFeatures.push(type);
-        else aheadFeatures.push(type);
-      });
-
-      // Deduplicate and place (max 2 per side)
-      const dedup = arr => Array.from(new Set(arr)).slice(0, 2);
-      dedup(leftFeatures).forEach((t, idx)  => placePicto(layer, t, 'left',  idx));
-      dedup(rightFeatures).forEach((t, idx) => placePicto(layer, t, 'right', idx));
-      dedup(aheadFeatures).forEach((t, idx) => placePicto(layer, t, 'top',   idx));
-    });
-
-    btn.textContent = 'Surroundings fetched ✓';
-    setTimeout(() => { btn.textContent = 'Fetch surroundings'; btn.disabled = false; }, 2000);
-  } catch (err) {
-    btn.textContent = 'Fetch surroundings';
-    btn.disabled = false;
-    alert('Surroundings fetch failed: ' + err.message);
-  }
-}
-
-// ─── OSM Junction Detection ──────────────────────────────────────────────────
-// Queries all highway=* ways along the GPX track (30m corridor)
-// Finds junctions where ways meet at an angle and uses those as turn points
-// Falls back to GPX angle detection for sections with no OSM data
-
-async function detectTurnsFromMap(points, minAngle, statusCallback) {
-  // Sample GPX every ~50m to build corridor query (avoid huge queries)
-  const SAMPLE = 50;
-  const cumDist = [0];
-  for (let i = 1; i < points.length; i++)
-    cumDist.push(cumDist[i-1] + haversine(points[i-1], points[i]));
-  const totalDist = cumDist[cumDist.length-1];
-
-  // Sample points along track
-  const samples = [];
-  let nextSampleDist = 0;
-  for (let i = 0; i < points.length; i++) {
-    if (cumDist[i] >= nextSampleDist) {
-      samples.push(points[i]);
-      nextSampleDist += SAMPLE;
-    }
-  }
-  if (samples[samples.length-1] !== points[points.length-1])
-    samples.push(points[points.length-1]);
-
-  statusCallback('Querying OSM for roads and tracks…');
-
-  // Build Overpass query — all highway ways within 30m of sample points
-  const stmts = samples.map(p =>
-    'way(around:30,'+p.lat.toFixed(6)+','+p.lon.toFixed(6)+')[highway];'
-  ).join('\n');
-  const query = '[out:json][timeout:60];\n(\n' + stmts + '\n);\n(._;>;);\nout body;';
-
-  let osmWays = [], osmNodes = {};
-  try {
-    const resp = await fetch('https://overpass-api.de/api/interpreter', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'data=' + encodeURIComponent(query)
-    });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    const data = await resp.json();
-
-    // Index nodes by id
-    (data.elements || []).forEach(el => {
-      if (el.type === 'node') osmNodes[el.id] = el;
-      if (el.type === 'way') osmWays.push(el);
-    });
-    statusCallback('Found ' + osmWays.length + ' OSM ways, analysing junctions…');
-  } catch(err) {
-    statusCallback('OSM query failed (' + err.message + '), falling back to GPX detection');
-    osmWays = [];
-  }
-
-  // If no OSM data, fall back to GPX angle detection
-  if (osmWays.length === 0) {
-    statusCallback('No OSM data — using GPX angle detection');
-    return detectTurns(points, minAngle, 50);
-  }
-
-  // Build node → ways lookup (which ways share each node)
-  const nodeToWays = {};
-  osmWays.forEach(way => {
-    (way.nodes || []).forEach(nid => {
-      if (!nodeToWays[nid]) nodeToWays[nid] = [];
-      nodeToWays[nid].push(way);
-    });
-  });
-
-  // Find junction nodes: nodes shared by 2+ ways at an angle >= minAngle
-  const junctionTurns = [];
-
-  Object.entries(nodeToWays).forEach(([nid, ways]) => {
-    if (ways.length < 2) return; // not a junction
-    const node = osmNodes[nid];
-    if (!node) return;
-
-    // Check if this junction node is close to our GPX track (within 30m)
-    let closestDist = Infinity, closestIdx = 0;
-    for (let i = 0; i < points.length; i++) {
-      const d = haversine(node, points[i]);
-      if (d < closestDist) { closestDist = d; closestIdx = i; }
-    }
-    if (closestDist > 30) return; // not on our route
-
-    // Calculate incoming and outgoing bearings at this junction
-    // Use the GPX bearing approaching and leaving this node
-    const LOOK = 10;
-    const before = Math.max(0, closestIdx - LOOK);
-    const after  = Math.min(points.length-1, closestIdx + LOOK);
-
-    function avgBearingRange(from, to) {
-      const bs = [];
-      for (let i = from; i < to; i++)
-        bs.push(bearing(points[i], points[i+1]));
-      if (!bs.length) return null;
-      let sc = 0, ss = 0;
-      bs.forEach(b => { sc += Math.cos(b*Math.PI/180); ss += Math.sin(b*Math.PI/180); });
-      return (Math.atan2(ss/bs.length, sc/bs.length) * 180/Math.PI + 360) % 360;
-    }
-
-    const bIn  = avgBearingRange(before, closestIdx);
-    const bOut = avgBearingRange(closestIdx, after);
-    if (bIn === null || bOut === null) return;
-    const angle = angleDiff(bIn, bOut);
-    if (Math.abs(angle) < minAngle) return;
-
-    junctionTurns.push({
-      index:         closestIdx,
-      distFromStart: cumDist[closestIdx],
-      bearingIn:     bIn,
-      bearingOut:    bOut,
-      angle:         angle,
-      osmNode:       node,
-      wayCount:      ways.length,
-    });
-  });
-
-  // Also find sections of GPX with NO nearby OSM way and run GPX detection there
-  // Build a set of track point indices that are "covered" by OSM
-  const covered = new Set();
-  osmWays.forEach(way => {
-    (way.nodes || []).forEach(nid => {
-      const node = osmNodes[nid];
-      if (!node) return;
-      for (let i = 0; i < points.length; i++) {
-        if (haversine(node, points[i]) < 30) covered.add(i);
-      }
-    });
-  });
-
-  // Find uncovered segments and run GPX detection on them
-  const gpxFallbackTurns = [];
-  let inGap = false, gapStart = 0;
-  for (let i = 0; i <= points.length; i++) {
-    const isCovered = covered.has(i);
-    if (!isCovered && !inGap) { inGap = true; gapStart = i; }
-    if ((isCovered || i === points.length) && inGap) {
-      inGap = false;
-      if (i - gapStart > 20) { // gap long enough to bother detecting
-        const segment = points.slice(gapStart, i);
-        const { turns: segTurns } = detectTurns(segment, minAngle, 50);
-        segTurns.forEach(t => {
-          gpxFallbackTurns.push({
-            index:         gapStart + t.index,
-            distFromStart: cumDist[gapStart + t.index],
-            distFromLast:  t.distFromLast,
-            bearingIn:     t.bearingIn,
-            bearingOut:    t.bearingOut,
-            angle:         t.angle,
-            junctionHint:  t.junctionHint,
-          });
-        });
-      }
-    }
-  }
-
-  // Combine OSM junctions + GPX fallback turns, sort by distance
-  const allTurns = junctionTurns.concat(gpxFallbackTurns)
-    .sort((a, b) => a.distFromStart - b.distFromStart);
-
-  // Remove duplicates (OSM and GPX both detected same turn)
-  const deduped = [];
-  allTurns.forEach(t => {
-    if (!deduped.length || t.distFromStart - deduped[deduped.length-1].distFromStart > 20) {
-      deduped.push(t);
-    }
-  });
-
-  // Add distFromLast and junctionHint
-  const turns = deduped.map((t, i) => ({
-    index:         t.index,
-    distFromStart: t.distFromStart,
-    distFromLast:  i === 0 ? t.distFromStart : t.distFromStart - deduped[i-1].distFromStart,
-    bearingIn:     t.bearingIn,
-    bearingOut:    t.bearingOut,
-    angle:         t.angle,
-    junctionHint:  t.wayCount >= 3 ? 'cross' : 'normal',
-  }));
-
-  for (let i = 0; i < turns.length-1; i++)
-    turns[i].distToNext = turns[i+1].distFromStart - turns[i].distFromStart;
-  if (turns.length > 0)
-    turns[turns.length-1].distToNext = totalDist - turns[turns.length-1].distFromStart;
-
-  return { turns, totalDist };
-}
 
 // ─── Surface Detection via Overpass API ──────────────────────────────────────
 function surfaceCategory(tag) {
@@ -1062,116 +560,30 @@ function fetchElevation() {
 }
 
 let detectedTurns = [];
-// Detect roundabout direction from node geometry (shoelace formula)
-// Returns true if nodes go clockwise (right-hand traffic / Europe standard)
-function isClockwiseRoundabout(nodes, nodeMap) {
-  if (!nodes || nodes.length < 3) return true; // default clockwise
-  let area = 0;
-  for (let i = 0; i < nodes.length; i++) {
-    const a = nodeMap[nodes[i]], b = nodeMap[nodes[(i+1) % nodes.length]];
-    if (!a || !b) continue;
-    area += (a.lon * b.lat) - (b.lon * a.lat);
-  }
-  // Positive area = counter-clockwise nodes = clockwise driving (right-hand traffic)
-  return area > 0;
-}
-
 async function fetchSurfaces() {
   const rows = document.querySelectorAll('#rbBody tr');
   if (!rows.length || !detectedTurns.length) { alert('Generate a roadbook first.'); return; }
   const btn = document.getElementById('surfaceBtn');
-  btn.textContent = 'Fetching surfaces…'; btn.disabled = true;
-
-  // ── Query 1: surface tags (50m radius per turn) ───────────────────────────
-  const surfStmts = detectedTurns.map(t =>
-    'way(around:50,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[highway];'
-  ).join('\n');
-  const surfQuery = '[out:json][timeout:30];(\n'+surfStmts+'\n);out tags geom;';
-
-  // ── Query 2: roundabouts (strict 40m radius — must be ON the roundabout) ──
-  const rabtStmts = detectedTurns.map(t =>
-    'way(around:40,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
-  ).join('\n');
-  const rabtQuery = '[out:json][timeout:30];(\n'+rabtStmts+'\n);out tags geom;';
-
+  btn.textContent = 'Fetching…'; btn.disabled = true;
+  const unions = detectedTurns.map(t => 'way(around:30,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[highway];').join('\n');
+  const query = '[out:json][timeout:25];(\n'+unions+'\n);out tags center;';
   try {
-    // Fire both queries separately so results don't mix
-    const [surfResp, rabtResp] = await Promise.all([
-      fetch('https://overpass-api.de/api/interpreter', {
-        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:'data='+encodeURIComponent(surfQuery)
-      }),
-      fetch('https://overpass-api.de/api/interpreter', {
-        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:'data='+encodeURIComponent(rabtQuery)
-      })
-    ]);
-    if (!surfResp.ok) throw new Error('Surface HTTP '+surfResp.status);
-    if (!rabtResp.ok) throw new Error('Roundabout HTTP '+rabtResp.status);
-
-    const surfData = await surfResp.json();
-    const rabtData = await rabtResp.json();
-
-    const surfaceWays    = surfData.elements || [];
-    const roundaboutWays = rabtData.elements || [];
-
-    // Convert degrees lat/lon distance to metres approx (1 deg lat ≈ 111000m)
-    function degDist(a, b) {
-      return Math.hypot((a.lat - b.lat) * 111000, (a.lon - b.lon) * 85000);
-    }
-
-    detectedTurns.forEach((t, i) => {
-      // ── Surface ───────────────────────────────────────────────────────────
-      let bestEl = null, bestDist = Infinity;
-      surfaceWays.forEach(el => {
-        if (!el.geometry) return;
-        el.geometry.forEach(pt => {
-          const d = degDist(pt, t.pt);
-          if (d < bestDist) { bestDist = d; bestEl = el; }
-        });
-      });
-      const surface = bestEl && bestEl.tags && bestEl.tags.surface ? bestEl.tags.surface : null;
-      const strip = rows[i] ? rows[i].querySelector('.surf-strip') : null;
-      if (strip) strip.innerHTML = drawSurfaceSymbol(surfaceCategory(surface), t.difficult);
-
-      // ── Roundabout — only if a roundabout node is within 40m of THIS turn ─
-      let nearestRabt = null, rabtDist = Infinity;
-      roundaboutWays.forEach(el => {
-        if (!el.geometry) return;
-        el.geometry.forEach(pt => {
-          const d = degDist(pt, t.pt);
-          // Strict threshold: must be within 40m of this specific turn point
-          if (d < rabtDist && d < 40) { rabtDist = d; nearestRabt = el; }
-        });
-      });
-
-      if (nearestRabt) {
-        let clockwise = true;
-        const pts = nearestRabt.geometry;
-        if (pts && pts.length >= 3) {
-          let area = 0;
-          for (let j = 0; j < pts.length; j++) {
-            const a = pts[j], b = pts[(j+1) % pts.length];
-            area += (a.lon * b.lat) - (b.lon * a.lat);
-          }
-          clockwise = area > 0;
-        }
-        const storedTurn = window._storedTurns && window._storedTurns[i];
-        const tulipCell  = rows[i] ? rows[i].querySelector('.col-tulip') : null;
-        if (storedTurn && tulipCell) {
-          detectedTurns[i].junctionHint = 'roundabout';
-          detectedTurns[i].roundaboutCW = clockwise;
-          const newTulip = drawTulip(storedTurn.bearingIn, storedTurn.bearingOut, storedTurn.angle, 'roundabout', clockwise);
-          const oldSvg = tulipCell.querySelector('svg');
-          if (oldSvg) {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = newTulip;
-            oldSvg.replaceWith(tmp.firstChild);
-          }
-        }
-      }
+    const resp = await fetch('https://overpass-api.de/api/interpreter', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'data='+encodeURIComponent(query)
     });
-
+    if (!resp.ok) throw new Error('HTTP '+resp.status);
+    const data = await resp.json();
+    detectedTurns.forEach((t,i) => {
+      let bestSurface=null, bestDist=Infinity;
+      (data.elements||[]).forEach(el => {
+        if (!el.center) return;
+        const d = Math.hypot(el.center.lat-t.pt.lat, el.center.lon-t.pt.lon);
+        if (d<bestDist){bestDist=d; bestSurface=el.tags&&el.tags.surface?el.tags.surface:null;}
+      });
+      const strip = rows[i]?rows[i].querySelector('.surf-strip'):null;
+      if (strip) strip.innerHTML = drawSurfaceSymbol(surfaceCategory(bestSurface), t.difficult);
+    });
     btn.textContent='Surfaces fetched ✓';
     setTimeout(()=>{btn.textContent='Fetch surfaces';btn.disabled=false;},2000);
   } catch(err) {
@@ -1196,44 +608,16 @@ angleSlider.addEventListener('input',()=>{ angleVal.textContent=angleSlider.valu
 distSlider.addEventListener('input',()=>{ distVal.textContent=distSlider.value+' m'; });
 spacingSlider.addEventListener('input',()=>{ spacingVal.textContent=spacingSlider.value+' m'; });
 interpMethod.addEventListener('change',()=>{
-  const isNone = interpMethod.value==='none' || interpMethod.value==='map';
-  spacingGroup.style.opacity = isNone ? '0.35' : '1';
-  spacingGroup.style.pointerEvents = isNone ? 'none' : '';
+  const isNone=interpMethod.value==='none';
+  spacingGroup.style.opacity=isNone?'0.35':'1';
+  spacingGroup.style.pointerEvents=isNone?'none':'';
 });
 dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
 dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
 dropZone.addEventListener('drop',e=>{e.preventDefault();dropZone.classList.remove('drag-over');const f=e.dataTransfer.files[0];if(f)loadFile(f);});
 fileInput.addEventListener('change',()=>{if(fileInput.files[0])loadFile(fileInput.files[0]);});
 generateBtn.addEventListener('click',generate);
-
-// How To Use panel
-(function() {
-  const howToBtn   = document.getElementById('howToBtn');
-  const howToPanel = document.getElementById('howToPanel');
-  const howToClose = document.getElementById('howToClose');
-  howToBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    howToPanel.classList.toggle('open');
-    if (howToPanel.classList.contains('open')) {
-      requestAnimationFrame(function() {
-        const r  = howToBtn.getBoundingClientRect();
-        const pw = howToPanel.offsetWidth, ph = howToPanel.offsetHeight;
-        let top  = r.bottom + 8;
-        let left = r.right - pw;
-        if (top + ph > window.innerHeight - 8) top = r.top - ph - 8;
-        if (left < 8) left = 8;
-        howToPanel.style.top  = top + 'px';
-        howToPanel.style.left = left + 'px';
-      });
-    }
-  });
-  howToClose.addEventListener('click', function(e) { e.stopPropagation(); howToPanel.classList.remove('open'); });
-  document.addEventListener('click', function(e) {
-    if (!howToPanel.contains(e.target) && e.target !== howToBtn) howToPanel.classList.remove('open');
-  });
-})();
 document.getElementById('surfaceBtn').addEventListener('click', fetchSurfaces);
-document.getElementById('surroundBtn').addEventListener('click', fetchSurroundings);
 document.getElementById('elevationBtn').addEventListener('click', fetchElevation);
 printBtn.addEventListener('click', () => {
   // Sync typed notes into HTML so the preview captures them
@@ -1263,7 +647,7 @@ printBtn.addEventListener('click', () => {
     thead{background:#1a1a18;color:#f5f0e8;}
     thead th{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.12em;padding:8px 12px;text-align:center;border-right:1px solid rgba(255,255,255,0.15);}
     thead th:last-child{border-right:none;}
-    tbody tr{border-bottom:2px solid #1a1a18;page-break-inside:avoid;height:120px;}
+    tbody tr{border-bottom:2px solid #1a1a18;page-break-inside:avoid;}
     tbody tr:nth-child(even){background:#f0ebe0;}
     td.col-dist{border-right:2px solid #1a1a18;padding:0;position:relative;}
     td.col-tulip{text-align:center;border-right:2px solid #1a1a18;padding:6px;position:relative;vertical-align:top;}
@@ -1325,45 +709,22 @@ function loadFile(file) {
   reader.readAsText(file);
 }
 
-async function generate() {
+function generate() {
   if(!gpxPoints.length) return;
   const method=interpMethod.value, stepM=parseInt(spacingSlider.value);
   const minAngle=parseInt(angleSlider.value), minDist=parseInt(distSlider.value);
-
-  generateBtn.disabled = true;
-  generateBtn.textContent = 'Generating…';
-
-  let working, turns, totalDist, mLabel;
-
-  if (method === 'map') {
-    working = gpxPoints;
-    interpBadge.textContent = 'Querying OSM…';
-    const result = await detectTurnsFromMap(gpxPoints, minAngle, msg => {
-      interpBadge.textContent = msg;
-    });
-    turns = result.turns;
-    totalDist = result.totalDist;
-    mLabel = 'OSM map detection';
-  } else {
-    working = applyInterpolation(gpxPoints, method, stepM);
-    interpBadge.textContent = method!=='none' ? gpxPoints.length.toLocaleString()+' → '+working.length.toLocaleString()+' pts' : '';
-    const result = detectTurns(working, minAngle, minDist);
-    turns = result.turns;
-    totalDist = result.totalDist;
-    mLabel = {none:'raw GPX', linear:'linear', spline:'spline'}[method];
-  }
-
-  generateBtn.disabled = false;
-  generateBtn.textContent = 'Generate roadbook';
-
-  rbStats.innerHTML='<span><strong>'+turns.length+'</strong> turns detected</span><span>Total: <strong>'+fmtDist(totalDist)+'</strong></span><span style="font-style:italic">'+mLabel+'</span>';
+  const working=applyInterpolation(gpxPoints,method,stepM);
+  interpBadge.textContent=method!=='none'?gpxPoints.length.toLocaleString()+' → '+working.length.toLocaleString()+' pts':'';
+  const {turns,totalDist}=detectTurns(working,minAngle,minDist);
+  const mLabel={none:'raw GPX',linear:'linear',spline:'spline'}[method];
+  rbStats.innerHTML='<span><strong>'+turns.length+'</strong> turns detected</span><span>Total: <strong>'+fmtDist(totalDist)+'</strong></span><span style="font-style:italic">'+mLabel+(method!=='none'?' · '+stepM+' m':'')+'</span>';
   rbBody.innerHTML='';
   if(turns.length===0){
     rbBody.innerHTML='<tr><td colspan="3" style="text-align:center;padding:24px;color:var(--muted);font-style:italic;">No turns detected — try lowering the minimum angle.</td></tr>';
   } else {
-    turns.forEach((t,i)=>{
+    turns.forEach(t=>{
       const cls=classifyTurn(t.angle);
-      const tulip=drawTulip(t.bearingIn,t.bearingOut,t.angle,t.junctionHint||'normal',true);
+      const tulip=drawTulip(t.bearingIn,t.bearingOut,t.angle,t.junctionHint||'normal');
       const totalKm=(t.distFromStart/1000).toFixed(2);
       const deltaM=Math.round(t.distFromLast);
       const deltaStr=deltaM>=1000?(deltaM/1000).toFixed(1)+' km':deltaM+' m';
@@ -1380,7 +741,6 @@ async function generate() {
         '</td>'+
         '<td class="col-tulip">'+
           '<div class="sym-strip"></div>'+
-          '<div class="surround-layer" id="surround-'+i+'"></div>'+
           tulip+
           '<div class="surf-strip"></div>'+
         '</td>'+
@@ -1395,8 +755,6 @@ async function generate() {
   }
   roadbookSection.classList.add('visible');
   roadbookSection.scrollIntoView({behavior:'smooth',block:'start'});
-  // Store original turns for roundabout redraw
-  window._storedTurns = turns;
   // Store turn points + difficulty + elevation direction for surface lookup
   detectedTurns = turns.map((t, i) => {
     const pt = working[t.index] || working[working.length-1];
@@ -1423,7 +781,6 @@ async function generate() {
     return { pt, difficult, elevDir };
   });
   document.getElementById('surfaceBtn').style.display = 'inline-block';
-  document.getElementById('surroundBtn').style.display = 'inline-block';
   document.getElementById('elevationBtn').style.display = 'inline-block';
 }
 </script>
