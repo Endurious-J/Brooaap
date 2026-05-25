@@ -893,19 +893,34 @@ async function detectTurnsFromMap(points, minAngle, statusCallback) {
   const allTurns = junctionTurns.concat(gpxFallbackTurns)
     .sort((a, b) => a.distFromStart - b.distFromStart);
 
-  // Remove duplicates (OSM and GPX both detected same turn)
-  const deduped = [];
-  allTurns.forEach(t => {
-    if (!deduped.length || t.distFromStart - deduped[deduped.length-1].distFromStart > 20) {
-      deduped.push(t);
+  // Apply same merge logic as detectTurns:
+  // merge same-direction turns within MERGE_DIST with no straight between them
+  const MERGE_DIST = Math.max(minAngle, 30);
+
+  function sameDir(a, b) { return (a.angle >= 0) === (b.angle >= 0); }
+  function hasStraight(a, b) { return Math.abs(angleDiff(a.bearingOut, b.bearingIn)) < 10; }
+
+  const merged = [];
+  if (allTurns.length > 0) {
+    let cluster = [allTurns[0]];
+    for (let i = 1; i < allTurns.length; i++) {
+      const prev = allTurns[i-1], curr = allTurns[i];
+      const gap  = curr.distFromStart - prev.distFromStart;
+      if (gap <= MERGE_DIST && sameDir(prev, curr) && !hasStraight(prev, curr)) {
+        cluster.push(curr);
+      } else {
+        merged.push(cluster.reduce((a,b) => Math.abs(a.angle)>=Math.abs(b.angle)?a:b));
+        cluster = [curr];
+      }
     }
-  });
+    merged.push(cluster.reduce((a,b) => Math.abs(a.angle)>=Math.abs(b.angle)?a:b));
+  }
 
   // Add distFromLast and junctionHint
-  const turns = deduped.map((t, i) => ({
+  const turns = merged.map((t, i) => ({
     index:         t.index,
     distFromStart: t.distFromStart,
-    distFromLast:  i === 0 ? t.distFromStart : t.distFromStart - deduped[i-1].distFromStart,
+    distFromLast:  i === 0 ? t.distFromStart : t.distFromStart - merged[i-1].distFromStart,
     bearingIn:     t.bearingIn,
     bearingOut:    t.bearingOut,
     angle:         t.angle,
