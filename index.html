@@ -145,6 +145,7 @@
         <span class="val" id="spacingVal">10 m</span>
       </div>
       <span class="interp-badge" id="interpBadge"></span>
+      <span id="mapModeNote" style="display:none;font-size:11px;color:var(--accent);font-style:italic;">&#x1f310; Needs internet · queries OpenStreetMap</span>
     </div>
     <div class="controls-row">
       <div class="controls-section-label" style="margin-bottom:0;margin-right:8px">Turn detection</div>
@@ -1196,9 +1197,11 @@ angleSlider.addEventListener('input',()=>{ angleVal.textContent=angleSlider.valu
 distSlider.addEventListener('input',()=>{ distVal.textContent=distSlider.value+' m'; });
 spacingSlider.addEventListener('input',()=>{ spacingVal.textContent=spacingSlider.value+' m'; });
 interpMethod.addEventListener('change',()=>{
-  const isNone = interpMethod.value==='none' || interpMethod.value==='map';
+  const isMap = interpMethod.value==='map';
+  const isNone = interpMethod.value==='none' || isMap;
   spacingGroup.style.opacity = isNone ? '0.35' : '1';
   spacingGroup.style.pointerEvents = isNone ? 'none' : '';
+  document.getElementById('mapModeNote').style.display = isMap ? 'inline' : 'none';
 });
 dropZone.addEventListener('dragover',e=>{e.preventDefault();dropZone.classList.add('drag-over');});
 dropZone.addEventListener('dragleave',()=>dropZone.classList.remove('drag-over'));
