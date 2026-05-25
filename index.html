@@ -737,29 +737,23 @@ async function fetchSurroundings() {
 // Finds junctions where ways meet at an angle and uses those as turn points
 // Falls back to GPX angle detection for sections with no OSM data
 
-async function detectTurnsFromMap(points, minAngle, statusCallback) {
-  // Sample GPX every ~50m to build corridor query (avoid huge queries)
-  const SAMPLE = 50;
+async function detectTurnsFromMap(points, minAngle, minDist, statusCallback) {
+  const SAMPLE = 50; // sample GPX every 50m for corridor query
   const cumDist = [0];
   for (let i = 1; i < points.length; i++)
     cumDist.push(cumDist[i-1] + haversine(points[i-1], points[i]));
   const totalDist = cumDist[cumDist.length-1];
 
-  // Sample points along track
+  // Sample points for OSM query
   const samples = [];
-  let nextSampleDist = 0;
+  let nextD = 0;
   for (let i = 0; i < points.length; i++) {
-    if (cumDist[i] >= nextSampleDist) {
-      samples.push(points[i]);
-      nextSampleDist += SAMPLE;
-    }
+    if (cumDist[i] >= nextD) { samples.push(points[i]); nextD += SAMPLE; }
   }
-  if (samples[samples.length-1] !== points[points.length-1])
-    samples.push(points[points.length-1]);
+  if (!samples.includes(points[points.length-1])) samples.push(points[points.length-1]);
 
-  statusCallback('Querying OSM for roads and tracks…');
+  statusCallback('Querying OSM for roads and tracks...');
 
-  // Build Overpass query — all highway ways within 30m of sample points
   const stmts = samples.map(p =>
     'way(around:30,'+p.lat.toFixed(6)+','+p.lon.toFixed(6)+')[highway];'
   ).join('\n');
@@ -774,137 +768,98 @@ async function detectTurnsFromMap(points, minAngle, statusCallback) {
     });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const data = await resp.json();
-
-    // Index nodes by id
     (data.elements || []).forEach(el => {
       if (el.type === 'node') osmNodes[el.id] = el;
-      if (el.type === 'way') osmWays.push(el);
+      if (el.type === 'way')  osmWays.push(el);
     });
-    statusCallback('Found ' + osmWays.length + ' OSM ways, analysing junctions…');
+    statusCallback('Found ' + osmWays.length + ' OSM ways, analysing junctions...');
   } catch(err) {
-    statusCallback('OSM query failed (' + err.message + '), falling back to GPX detection');
-    osmWays = [];
+    statusCallback('OSM failed (' + err.message + '), using GPX detection');
   }
 
-  // If no OSM data, fall back to GPX angle detection
+  // Fall back fully to GPX if no OSM data
   if (osmWays.length === 0) {
-    statusCallback('No OSM data — using GPX angle detection');
-    return detectTurns(points, minAngle, 50);
+    return detectTurns(points, minAngle, minDist);
   }
 
-  // Build node → ways lookup (which ways share each node)
-  const nodeToWays = {};
-  osmWays.forEach(way => {
-    (way.nodes || []).forEach(nid => {
-      if (!nodeToWays[nid]) nodeToWays[nid] = [];
-      nodeToWays[nid].push(way);
+  // Determine which GPX point travels along which OSM way
+  // For each GPX point, find the nearest OSM way
+  function nearestWay(ptIdx) {
+    let best = null, bestD = Infinity;
+    osmWays.forEach(way => {
+      (way.nodes || []).forEach(nid => {
+        const n = osmNodes[nid];
+        if (!n) return;
+        const d = haversine(points[ptIdx], n);
+        if (d < bestD) { bestD = d; best = way; }
+      });
     });
-  });
+    return bestD < 30 ? best : null;
+  }
 
-  // Find junction nodes: nodes shared by 2+ ways at an angle >= minAngle
-  const junctionTurns = [];
+  // Walk the GPX track and detect turns by watching for way changes
+  // A real turn happens when we leave one way and join a different one
+  const raw = [];
+  let lastTurnDist = 0;
+  let prevWay = null;
 
-  Object.entries(nodeToWays).forEach(([nid, ways]) => {
-    if (ways.length < 2) return; // not a junction
-    const node = osmNodes[nid];
-    if (!node) return;
+  const LOOK = 8; // points to average bearing over
 
-    // Check if this junction node is close to our GPX track (within 30m)
-    let closestDist = Infinity, closestIdx = 0;
-    for (let i = 0; i < points.length; i++) {
-      const d = haversine(node, points[i]);
-      if (d < closestDist) { closestDist = d; closestIdx = i; }
+  function avgBear(idx, forward) {
+    const bs = [];
+    if (forward) {
+      for (let j = idx; j < Math.min(idx+LOOK, points.length-1); j++)
+        bs.push(bearing(points[j], points[j+1]));
+    } else {
+      for (let j = Math.max(0, idx-LOOK); j < idx; j++)
+        bs.push(bearing(points[j], points[j+1]));
     }
-    if (closestDist > 30) return; // not on our route
+    if (!bs.length) return null;
+    let sc = 0, ss = 0;
+    bs.forEach(b => { sc += Math.cos(b*Math.PI/180); ss += Math.sin(b*Math.PI/180); });
+    return (Math.atan2(ss/bs.length, sc/bs.length) * 180/Math.PI + 360) % 360;
+  }
 
-    // Calculate incoming and outgoing bearings at this junction
-    // Use the GPX bearing approaching and leaving this node
-    const LOOK = 10;
-    const before = Math.max(0, closestIdx - LOOK);
-    const after  = Math.min(points.length-1, closestIdx + LOOK);
+  for (let i = LOOK; i < points.length - LOOK; i++) {
+    const distFromLast = cumDist[i] - lastTurnDist;
+    if (distFromLast < minDist) continue;
 
-    function avgBearingRange(from, to) {
-      const bs = [];
-      for (let i = from; i < to; i++)
-        bs.push(bearing(points[i], points[i+1]));
-      if (!bs.length) return null;
-      let sc = 0, ss = 0;
-      bs.forEach(b => { sc += Math.cos(b*Math.PI/180); ss += Math.sin(b*Math.PI/180); });
-      return (Math.atan2(ss/bs.length, sc/bs.length) * 180/Math.PI + 360) % 360;
-    }
+    const curWay = nearestWay(i);
 
-    const bIn  = avgBearingRange(before, closestIdx);
-    const bOut = avgBearingRange(closestIdx, after);
-    if (bIn === null || bOut === null) return;
+    // Detect turn: either way changed OR bearing changed beyond minAngle
+    const bIn  = avgBear(i, false);
+    const bOut = avgBear(i, true);
+    if (bIn === null || bOut === null) continue;
     const angle = angleDiff(bIn, bOut);
-    if (Math.abs(angle) < minAngle) return;
 
-    junctionTurns.push({
-      index:         closestIdx,
-      distFromStart: cumDist[closestIdx],
-      bearingIn:     bIn,
-      bearingOut:    bOut,
-      angle:         angle,
-      osmNode:       node,
-      wayCount:      ways.length,
-    });
-  });
+    const wayChanged = curWay && prevWay && curWay.id !== prevWay.id;
+    const bigAngle   = Math.abs(angle) >= minAngle;
 
-  // Also find sections of GPX with NO nearby OSM way and run GPX detection there
-  // Build a set of track point indices that are "covered" by OSM
-  const covered = new Set();
-  osmWays.forEach(way => {
-    (way.nodes || []).forEach(nid => {
-      const node = osmNodes[nid];
-      if (!node) return;
-      for (let i = 0; i < points.length; i++) {
-        if (haversine(node, points[i]) < 30) covered.add(i);
-      }
-    });
-  });
-
-  // Find uncovered segments and run GPX detection on them
-  const gpxFallbackTurns = [];
-  let inGap = false, gapStart = 0;
-  for (let i = 0; i <= points.length; i++) {
-    const isCovered = covered.has(i);
-    if (!isCovered && !inGap) { inGap = true; gapStart = i; }
-    if ((isCovered || i === points.length) && inGap) {
-      inGap = false;
-      if (i - gapStart > 20) { // gap long enough to bother detecting
-        const segment = points.slice(gapStart, i);
-        const { turns: segTurns } = detectTurns(segment, minAngle, 50);
-        segTurns.forEach(t => {
-          gpxFallbackTurns.push({
-            index:         gapStart + t.index,
-            distFromStart: cumDist[gapStart + t.index],
-            distFromLast:  t.distFromLast,
-            bearingIn:     t.bearingIn,
-            bearingOut:    t.bearingOut,
-            angle:         t.angle,
-            junctionHint:  t.junctionHint,
-          });
-        });
-      }
+    if (wayChanged || bigAngle) {
+      raw.push({
+        index:         i,
+        distFromStart: cumDist[i],
+        bearingIn:     bIn,
+        bearingOut:    bOut,
+        angle:         angle,
+        wayCount:      2,
+      });
+      lastTurnDist = cumDist[i];
     }
+
+    if (curWay) prevWay = curWay;
   }
 
-  // Combine OSM junctions + GPX fallback turns, sort by distance
-  const allTurns = junctionTurns.concat(gpxFallbackTurns)
-    .sort((a, b) => a.distFromStart - b.distFromStart);
-
-  // Apply same merge logic as detectTurns:
-  // merge same-direction turns within MERGE_DIST with no straight between them
-  const MERGE_DIST = Math.max(minAngle, 30);
-
+  // Apply same merge logic as detectTurns
+  const MERGE_DIST = Math.max(minDist, 30);
   function sameDir(a, b) { return (a.angle >= 0) === (b.angle >= 0); }
   function hasStraight(a, b) { return Math.abs(angleDiff(a.bearingOut, b.bearingIn)) < 10; }
 
   const merged = [];
-  if (allTurns.length > 0) {
-    let cluster = [allTurns[0]];
-    for (let i = 1; i < allTurns.length; i++) {
-      const prev = allTurns[i-1], curr = allTurns[i];
+  if (raw.length > 0) {
+    let cluster = [raw[0]];
+    for (let i = 1; i < raw.length; i++) {
+      const prev = raw[i-1], curr = raw[i];
       const gap  = curr.distFromStart - prev.distFromStart;
       if (gap <= MERGE_DIST && sameDir(prev, curr) && !hasStraight(prev, curr)) {
         cluster.push(curr);
@@ -916,7 +871,6 @@ async function detectTurnsFromMap(points, minAngle, statusCallback) {
     merged.push(cluster.reduce((a,b) => Math.abs(a.angle)>=Math.abs(b.angle)?a:b));
   }
 
-  // Add distFromLast and junctionHint
   const turns = merged.map((t, i) => ({
     index:         t.index,
     distFromStart: t.distFromStart,
@@ -924,7 +878,7 @@ async function detectTurnsFromMap(points, minAngle, statusCallback) {
     bearingIn:     t.bearingIn,
     bearingOut:    t.bearingOut,
     angle:         t.angle,
-    junctionHint:  t.wayCount >= 3 ? 'cross' : 'normal',
+    junctionHint:  'normal',
   }));
 
   for (let i = 0; i < turns.length-1; i++)
@@ -934,6 +888,7 @@ async function detectTurnsFromMap(points, minAngle, statusCallback) {
 
   return { turns, totalDist };
 }
+
 
 // ─── Surface Detection via Overpass API ──────────────────────────────────────
 function surfaceCategory(tag) {
@@ -1356,7 +1311,7 @@ async function generate() {
   if (method === 'map') {
     working = gpxPoints;
     interpBadge.textContent = 'Querying OSM…';
-    const result = await detectTurnsFromMap(gpxPoints, minAngle, msg => {
+    const result = await detectTurnsFromMap(gpxPoints, minAngle, minDist, msg => {
       interpBadge.textContent = msg;
     });
     turns = result.turns;
