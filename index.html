@@ -394,7 +394,8 @@ function drawTulip(bearingIn, bearingOut, angle, junctionHint, roundaboutCW) {
   const S=120, cx=S/2, cy=S/2;
   const roadLen=44, roadW=10, routeW=8, arrowSz=14, symR=16;
   const ink='#1a1a18', grey='#888880', red='#c8352a';
-  const normOut=(180-bearingOut+bearingIn+360)%360;
+  // normOut: angle maps directly to clock position (30°right=1 o'clock, 90°right=3 o'clock)
+  const normOut=(angle%360+360)%360;
   const isRoundabout=junctionHint==='roundabout';
   const {type,arms}=classifyJunction(angle,normOut);
   function toXY(deg,len) {
