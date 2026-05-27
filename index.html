@@ -676,7 +676,7 @@ async function fetchSurroundings() {
   const query = '[out:json][timeout:30];(\n' + stmts + '\n);out tags center;';
 
   try {
-    const resp = await fetch('https://overpass-api.de/api/interpreter', {
+    const resp = await fetch('https://overpass.kumi.systems/api/interpreter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'data=' + encodeURIComponent(query)
@@ -762,7 +762,7 @@ async function detectTurnsFromMap(points, minAngle, minDist, statusCallback) {
 
   let osmWays = [], osmNodes = {};
   try {
-    const resp = await fetch('https://overpass-api.de/api/interpreter', {
+    const resp = await fetch('https://overpass.kumi.systems/api/interpreter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: 'data=' + encodeURIComponent(query)
@@ -1048,52 +1048,60 @@ function isClockwiseRoundabout(nodes, nodeMap) {
   return area > 0;
 }
 
+// shared helper: convert degrees lat/lon distance to metres
+function degDist(a, b) {
+  return Math.hypot((a.lat - b.lat) * 111000, (a.lon - b.lon) * 85000);
+}
+
+// shared helper: redraw a tulip cell as roundabout
+function applyRoundabout(i, rows, nearestRabt) {
+  let clockwise = true;
+  const pts = nearestRabt.geometry;
+  if (pts && pts.length >= 3) {
+    let area = 0;
+    for (let j = 0; j < pts.length; j++) {
+      const a = pts[j], b = pts[(j+1) % pts.length];
+      area += (a.lon * b.lat) - (b.lon * a.lat);
+    }
+    clockwise = area > 0;
+  }
+  const storedTurn = window._storedTurns && window._storedTurns[i];
+  const tulipCell  = rows[i] ? rows[i].querySelector('.col-tulip') : null;
+  if (storedTurn && tulipCell) {
+    detectedTurns[i].junctionHint = 'roundabout';
+    detectedTurns[i].roundaboutCW = clockwise;
+    const newTulip = drawTulip(storedTurn.bearingIn, storedTurn.bearingOut, storedTurn.angle, 'roundabout', clockwise);
+    const oldSvg = tulipCell.querySelector('svg');
+    if (oldSvg) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = newTulip;
+      oldSvg.replaceWith(tmp.firstChild);
+    }
+  }
+}
+
 async function fetchSurfaces() {
   const rows = document.querySelectorAll('#rbBody tr');
   if (!rows.length || !detectedTurns.length) { alert('Generate a roadbook first.'); return; }
   const btn = document.getElementById('surfaceBtn');
   btn.textContent = 'Fetching surfaces…'; btn.disabled = true;
 
-  // ── Query 1: surface tags (50m radius per turn) ───────────────────────────
+  // Surface tags only (50m radius per turn)
   const surfStmts = detectedTurns.map(t =>
     'way(around:50,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[highway];'
   ).join('\n');
   const surfQuery = '[out:json][timeout:30];(\n'+surfStmts+'\n);out tags geom;';
 
-  // ── Query 2: roundabouts (strict 40m radius — must be ON the roundabout) ──
-  const rabtStmts = detectedTurns.map(t =>
-    'way(around:40,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
-  ).join('\n');
-  const rabtQuery = '[out:json][timeout:30];(\n'+rabtStmts+'\n);out tags geom;';
-
   try {
-    // Fire both queries separately so results don't mix
-    const [surfResp, rabtResp] = await Promise.all([
-      fetch('https://overpass-api.de/api/interpreter', {
-        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:'data='+encodeURIComponent(surfQuery)
-      }),
-      fetch('https://overpass-api.de/api/interpreter', {
-        method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-        body:'data='+encodeURIComponent(rabtQuery)
-      })
-    ]);
-    if (!surfResp.ok) throw new Error('Surface HTTP '+surfResp.status);
-    if (!rabtResp.ok) throw new Error('Roundabout HTTP '+rabtResp.status);
-
+    const surfResp = await fetch('https://overpass.kumi.systems/api/interpreter', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'data='+encodeURIComponent(surfQuery)
+    });
+    if (!surfResp.ok) throw new Error('HTTP '+surfResp.status);
     const surfData = await surfResp.json();
-    const rabtData = await rabtResp.json();
-
-    const surfaceWays    = surfData.elements || [];
-    const roundaboutWays = rabtData.elements || [];
-
-    // Convert degrees lat/lon distance to metres approx (1 deg lat ≈ 111000m)
-    function degDist(a, b) {
-      return Math.hypot((a.lat - b.lat) * 111000, (a.lon - b.lon) * 85000);
-    }
+    const surfaceWays = surfData.elements || [];
 
     detectedTurns.forEach((t, i) => {
-      // ── Surface ───────────────────────────────────────────────────────────
       let bestEl = null, bestDist = Infinity;
       surfaceWays.forEach(el => {
         if (!el.geometry) return;
@@ -1105,43 +1113,6 @@ async function fetchSurfaces() {
       const surface = bestEl && bestEl.tags && bestEl.tags.surface ? bestEl.tags.surface : null;
       const strip = rows[i] ? rows[i].querySelector('.surf-strip') : null;
       if (strip) strip.innerHTML = drawSurfaceSymbol(surfaceCategory(surface), t.difficult);
-
-      // ── Roundabout — only if a roundabout node is within 40m of THIS turn ─
-      let nearestRabt = null, rabtDist = Infinity;
-      roundaboutWays.forEach(el => {
-        if (!el.geometry) return;
-        el.geometry.forEach(pt => {
-          const d = degDist(pt, t.pt);
-          // Strict threshold: must be within 40m of this specific turn point
-          if (d < rabtDist && d < 40) { rabtDist = d; nearestRabt = el; }
-        });
-      });
-
-      if (nearestRabt) {
-        let clockwise = true;
-        const pts = nearestRabt.geometry;
-        if (pts && pts.length >= 3) {
-          let area = 0;
-          for (let j = 0; j < pts.length; j++) {
-            const a = pts[j], b = pts[(j+1) % pts.length];
-            area += (a.lon * b.lat) - (b.lon * a.lat);
-          }
-          clockwise = area > 0;
-        }
-        const storedTurn = window._storedTurns && window._storedTurns[i];
-        const tulipCell  = rows[i] ? rows[i].querySelector('.col-tulip') : null;
-        if (storedTurn && tulipCell) {
-          detectedTurns[i].junctionHint = 'roundabout';
-          detectedTurns[i].roundaboutCW = clockwise;
-          const newTulip = drawTulip(storedTurn.bearingIn, storedTurn.bearingOut, storedTurn.angle, 'roundabout', clockwise);
-          const oldSvg = tulipCell.querySelector('svg');
-          if (oldSvg) {
-            const tmp = document.createElement('div');
-            tmp.innerHTML = newTulip;
-            oldSvg.replaceWith(tmp.firstChild);
-          }
-        }
-      }
     });
 
     btn.textContent='Surfaces fetched ✓';
