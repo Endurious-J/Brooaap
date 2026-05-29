@@ -62,7 +62,7 @@
   .dist-total-unit { font-family:'Barlow Condensed',sans-serif; font-size:14px; color:var(--muted); margin-top:2px; }
   .dist-delta-box { position:absolute; bottom:0; left:0; border-top:1.5px solid var(--ink); border-right:1.5px solid var(--ink); border-left:1.5px solid var(--ink); padding:5px 10px; line-height:1.2; }
   .dist-delta { font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; color:var(--ink); white-space:nowrap; display:block; }
-  td.col-tulip { vertical-align:top; text-align:center; border-right:2px solid var(--ink); padding:6px; position:relative; }
+  td.col-tulip { vertical-align:top; text-align:center; border-right:2px solid var(--ink); padding:6px; position:relative; overflow:hidden; }
   /* symbol strip — top-right of tulip cell */
   .sym-strip { position:absolute; top:4px; right:4px; display:flex; flex-wrap:wrap; gap:2px; justify-content:flex-end; max-width:80px; z-index:1; }
   .sym-strip img { width:30px; height:30px; cursor:pointer; display:block; }
@@ -723,6 +723,56 @@ async function fetchSurroundings() {
       dedup(rightFeatures).forEach((t, idx) => placePicto(layer, t, 'right', idx));
       dedup(aheadFeatures).forEach((t, idx) => placePicto(layer, t, 'top',   idx));
     });
+
+    // Also fetch roundabouts for each turn point
+    const rabtStmts = detectedTurns.map(t =>
+      'way(around:40,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
+    ).join('\n');
+    const rabtQuery = '[out:json][timeout:30];(\n'+rabtStmts+'\n);out tags geom;';
+    const rabtResp = await fetch('https://overpass.kumi.systems/api/interpreter', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'data='+encodeURIComponent(rabtQuery)
+    });
+    if (rabtResp.ok) {
+      const rabtData = await rabtResp.json();
+      const roundaboutWays = rabtData.elements || [];
+      detectedTurns.forEach((t, i) => {
+        let nearestRabt = null, rabtDist = Infinity;
+        roundaboutWays.forEach(el => {
+          if (!el.geometry) return;
+          el.geometry.forEach(pt => {
+            const d = degDist(pt, t.pt);
+            if (d < rabtDist && d < 40) { rabtDist = d; nearestRabt = el; }
+          });
+        });
+        if (nearestRabt) applyRoundabout(i, rows, nearestRabt);
+      });
+    }
+
+    // Roundabout detection
+    const rabtStmts = detectedTurns.map(t =>
+      'way(around:40,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
+    ).join('\n');
+    const rabtQuery = '[out:json][timeout:30];(\n'+rabtStmts+'\n);out tags geom;';
+    const rabtResp = await fetch('https://overpass.kumi.systems/api/interpreter', {
+      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:'data='+encodeURIComponent(rabtQuery)
+    });
+    if (rabtResp.ok) {
+      const rabtData = await rabtResp.json();
+      const roundaboutWays = rabtData.elements || [];
+      detectedTurns.forEach((t, i) => {
+        let nearestRabt = null, rabtDist = Infinity;
+        roundaboutWays.forEach(el => {
+          if (!el.geometry) return;
+          el.geometry.forEach(pt => {
+            const d = degDist(pt, t.pt);
+            if (d < rabtDist && d < 40) { rabtDist = d; nearestRabt = el; }
+          });
+        });
+        if (nearestRabt) applyRoundabout(i, rows, nearestRabt);
+      });
+    }
 
     btn.textContent = 'Surroundings fetched ✓';
     setTimeout(() => { btn.textContent = 'Fetch surroundings'; btn.disabled = false; }, 2000);
