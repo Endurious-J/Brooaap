@@ -749,31 +749,6 @@ async function fetchSurroundings() {
       });
     }
 
-    // Roundabout detection
-    const rabtStmts = detectedTurns.map(t =>
-      'way(around:40,'+t.pt.lat.toFixed(6)+','+t.pt.lon.toFixed(6)+')[junction=roundabout];'
-    ).join('\n');
-    const rabtQuery = '[out:json][timeout:30];(\n'+rabtStmts+'\n);out tags geom;';
-    const rabtResp = await fetch('https://overpass.kumi.systems/api/interpreter', {
-      method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'data='+encodeURIComponent(rabtQuery)
-    });
-    if (rabtResp.ok) {
-      const rabtData = await rabtResp.json();
-      const roundaboutWays = rabtData.elements || [];
-      detectedTurns.forEach((t, i) => {
-        let nearestRabt = null, rabtDist = Infinity;
-        roundaboutWays.forEach(el => {
-          if (!el.geometry) return;
-          el.geometry.forEach(pt => {
-            const d = degDist(pt, t.pt);
-            if (d < rabtDist && d < 40) { rabtDist = d; nearestRabt = el; }
-          });
-        });
-        if (nearestRabt) applyRoundabout(i, rows, nearestRabt);
-      });
-    }
-
     btn.textContent = 'Surroundings fetched ✓';
     setTimeout(() => { btn.textContent = 'Fetch surroundings'; btn.disabled = false; }, 2000);
   } catch (err) {
